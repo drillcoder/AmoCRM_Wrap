@@ -35,7 +35,7 @@ class Value
      */
     public function __construct($value, $enum = null, $subtype = null)
     {
-        $this->enum = $enum;
+        $this->enum = (int)$enum;
         $this->value = $value;
         switch ($subtype) {
             case 1:

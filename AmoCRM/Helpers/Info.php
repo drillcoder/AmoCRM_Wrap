@@ -41,7 +41,28 @@ class Info
     /**
      * @var array
      */
+    private $idContactCustomFieldsEnums;
+    /**
+     * @var array
+     */
     private $idLeadCustomFields;
+    /**
+     * @var array
+     */
+    private $idLeadCustomFieldsEnums;
+    /**
+     * @var array
+     */
+    private $pipelines;
+    /**
+     * @var array
+     */
+    private $ElementType = array(
+            1 => 'contact',
+            2 => 'lead',
+            3 => 'company',
+            4 => 'task',
+        );
 
     /**
      * Info constructor.
@@ -49,6 +70,7 @@ class Info
      */
     public function __construct($info)
     {
+        $this->idContactCustomFieldsEnums = array();
         foreach ($info->custom_fields->contacts as $field) {
             $this->idContactCustomFields[$field->id] = $field->name;
             if ($field->code == 'PHONE') {
@@ -59,12 +81,30 @@ class Info
                 $this->emailFieldId = $field->id;
                 $this->idEmailEnums = array_flip(json_decode(json_encode($field->enums), true));
             }
+            if ($field->type_id == 5) {
+                $this->idContactCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
+            }
         }
+        $this->idLeadCustomFieldsEnums = array();
         foreach ($info->custom_fields->leads as $field) {
             $this->idLeadCustomFields[$field->id] = $field->name;
+            if ($field->type_id == 5) {
+                $this->idLeadCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
+            }
         }
-            foreach ($info->users as $user) {
+        foreach ($info->users as $user) {
             $this->idUsers[$user->id] = $user->name;
+        }
+        $this->pipelines = array();
+        foreach ($info->pipelines as $pipeline) {
+            $this->pipelines[$pipeline->id]['name'] = $pipeline->name;
+            $this->pipelines[$pipeline->id]['statuses'] = array();
+            foreach ($pipeline->statuses as $status) {
+                $this->pipelines[$pipeline->id]['statuses'][$status->id] = array(
+                    'name' => $status->name,
+                    'color' => $status->color
+                );
+            }
         }
     }
 

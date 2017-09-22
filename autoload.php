@@ -29,8 +29,12 @@ class ClassAutoloaderAmoCRM
     private function __autoloadAmoCRM($className)
     {
         $pathParts = explode('\\', $className);
-        self::$_lastLoadedFilename = implode(DIRECTORY_SEPARATOR, $pathParts) . '.php';
-        require_once(self::$_lastLoadedFilename);
+        self::$_lastLoadedFilename = dirname(__FILE__) . '/'. implode(DIRECTORY_SEPARATOR, $pathParts) . '.php';
+        if (!empty(self::$_lastLoadedFilename)) {
+            if (file_exists(self::$_lastLoadedFilename)) {
+                require_once(self::$_lastLoadedFilename);
+            }
+        }
     }
 }
 

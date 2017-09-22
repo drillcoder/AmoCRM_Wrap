@@ -7,6 +7,7 @@
  * Time: 17:11
  */
 namespace AmoCRM;
+
 use AmoCRM\Helpers\Info;
 
 /**
@@ -18,39 +19,23 @@ class Amo
     /**
      * @var string
      */
-    private $domain;
+    private static $domain;
     /**
      * @var string
      */
-    private $userLogin;
+    private static $userLogin;
     /**
      * @var string
      */
-    private $userHash;
+    private static $userHash;
     /**
      * @var bool
      */
-    private $authorization;
+    private static $authorization;
     /**
      * @var Info
      */
-    private $info;
-
-    /**
-     * Amo constructor.
-     * @param string $domain
-     * @param string $userLogin
-     * @param string $userHash
-     */
-    public function __construct($domain, $userLogin, $userHash)
-    {
-        $this->domain = $domain;
-        $this->userLogin = $userLogin;
-        $this->userHash = $userHash;
-        $this->authorization = true;
-        $this->authorization = $this->authorization();
-        $this->info = new Info($this->loadInfo());
-    }
+    public static $info;
 
     /**
      * @param string $phone
@@ -62,32 +47,18 @@ class Amo
     }
 
     /**
-     * @return bool
-     */
-    private function authorization()
-    {
-        $user = array(
-            'USER_LOGIN' => $this->userLogin,
-            'USER_HASH' => $this->userHash
-        );
-        $link = 'auth.php?type=json';
-        $res = $this->cUrl($link, 'post', $user);
-        return $res->auth;
-    }
-
-    /**
      * @param string $url
      * @param string $method
      * @param array $data
      * @return mixed|false
      */
-    private function cUrl($url, $method, $data = array())
+    public static function cUrl($url, $method, $data = array())
     {
-        if ($this->authorization) {
+        if (self::$authorization) {
             $curl = curl_init();
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
-            curl_setopt($curl, CURLOPT_URL, 'https://' . $this->domain . '.amocrm.ru/private/api/' . $url);
+            curl_setopt($curl, CURLOPT_URL, 'https://' . self::$domain . '.amocrm.ru/private/api/' . $url);
             curl_setopt($curl, CURLOPT_HEADER, false);
             if ($method == 'post') {
                 curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'POST');
@@ -106,23 +77,37 @@ class Amo
         return false;
     }
 
+
     /**
-     * @return boolean
+     * @param string $domain
+     * @param string $userLogin
+     * @param string $userHash
+     * @return bool
      */
-    public function isAuthorization()
+    public static function authorization($domain, $userLogin, $userHash)
     {
-        return $this->authorization;
+        self::$domain = $domain;
+        self::$userLogin = $userLogin;
+        self::$userHash = $userHash;
+        self::$authorization = true;
+        $user = array(
+            'USER_LOGIN' => self::$userLogin,
+            'USER_HASH' => self::$userHash
+        );
+        $link = 'auth.php?type=json';
+        $res = self::cUrl($link, 'post', $user);
+        self::$authorization = $res->auth;
+        if (self::$authorization)
+            self::$info = new Info(self::loadInfo());
+        return self::$authorization;
     }
 
     /**
-     * @param Base $object
-     * @return bool
+     * @return boolean
      */
-    public function save($object)
+    public static function isAuthorization()
     {
-        $objectData = $object->save();
-        $res = $this->cUrl("v2/json/{$objectData['type']}/set", 'post', $objectData['data']);
-        return $res->$objectData['type']->update[0]->id == $object->getId();
+        return self::$authorization;
     }
 
     /**
@@ -131,7 +116,7 @@ class Amo
     private function loadInfo()
     {
         $link = 'v2/json/accounts/current';
-        $res = $this->cUrl($link, 'get');
+        $res = Amo::cUrl($link, 'get');
         return $res->account;
     }
 
@@ -140,27 +125,29 @@ class Amo
      * @param $email
      * @return Contact[]|null
      */
-    public function searchContact($phone, $email)
+    public static function searchContact($phone, $email = null)
     {
         $link = 'v2/json/contacts/list?query=';
         $contacts = array();
         if (!empty($phone)) {
-            $phone = $this->clearPhone($phone);
+            $phone = self::clearPhone($phone);
             $linkPhone = $link . $phone;
-            $res = $this->cUrl($linkPhone, 'get');
+            $res = self::cUrl($linkPhone, 'get');
             if ($res) {
                 foreach ($res->contacts as $stdClass) {
-                    $contact = Contact::loadInStdClass($this->info, $stdClass);
+                    $contact = new Contact();
+                    $contact->loadInStdClass($stdClass);
                     $contacts[$contact->getId()] = $contact;
                 }
             }
         }
         if (!empty($email)) {
             $linkEmail = $link . $email;
-            $res = $this->cUrl($linkEmail, 'get');
+            $res = self::cUrl($linkEmail, 'get');
             if ($res) {
                 foreach ($res->contacts as $stdClass) {
-                    $contact = Contact::loadInStdClass($this->info, $stdClass);
+                    $contact = new Contact();
+                    $contact->loadInStdClass($stdClass);
                     $contacts[$contact->getId()] = $contact;
                 }
             }
@@ -168,35 +155,5 @@ class Amo
         if (!empty($contacts))
             return $contacts;
         return null;
-    }
-
-    /**
-     * @param int $id
-     * @return Lead|false
-     */
-    public function loadLeadInId($id)
-    {
-        $link = "v2/json/leads/list?id=$id";
-        $res = $this->cUrl($link, 'get');
-        if ($res) {
-            $lead = Lead::loadInStdClass($this->info, $res->leads[0]);
-            return $lead;
-        }
-        return false;
-    }
-
-    /**
-     * @param int $id
-     * @return Contact|false
-     */
-    public function loadContactInId($id)
-    {
-        $link = "v2/json/contacts/list?id=$id";
-        $res = $this->cUrl($link, 'get');
-        if ($res) {
-            $lead = Contact::loadInStdClass($this->info, $res->contacts[0]);
-            return $lead;
-        }
-        return false;
     }
 }

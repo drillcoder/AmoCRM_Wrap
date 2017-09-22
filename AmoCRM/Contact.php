@@ -9,7 +9,6 @@
 namespace AmoCRM;
 
 use AmoCRM\Helpers\CustomField;
-use AmoCRM\Helpers\Info;
 use AmoCRM\Helpers\Value;
 
 /**
@@ -34,103 +33,50 @@ class Contact extends Base
 
     /**
      * Contact constructor.
-     * @param Info $info
+     * @param int|null $id
      */
-    public function __construct($info)
+    public function __construct($id = null)
     {
-        Base::__construct($info);
-        $this->phones = new CustomField($info->get('phoneFieldId'));
-        $this->emails = new CustomField($info->get('emailFieldId'));
+        $this->phones = new CustomField(Amo::$info->get('phoneFieldId'));
+        $this->emails = new CustomField(Amo::$info->get('emailFieldId'));
+        Base::__construct($id);
     }
 
-
     /**
-     * @param Info $info
      * @param \stdClass $stdClass
-     * @return Contact
      */
-    public static function loadInStdClass($info, $stdClass)
+    public function loadInStdClass($stdClass)
     {
-        $contact = new Contact($info);
-        $contact->id = (int)$stdClass->id;
-        $contact->name = $stdClass->name;
-        $contact->createdUserId = (int)$stdClass->created_user_id;
-        $dateCreate = new \DateTime();
-        $dateCreate->setTimestamp($stdClass->date_create);
-        $contact->dateCreate = $dateCreate;
-        $contact->modifiedUserId = (int)$stdClass->modified_user_id;
-        $lastModified = new \DateTime();
-        $lastModified->setTimestamp($stdClass->last_modified);
-        $contact->lastModified = $lastModified;
-        $contact->responsibleUserId = (int)$stdClass->responsible_user_id;
-        $contact->linkedCompanyId = (int)$stdClass->linked_company_id;
-        $contact->linkedLeadsId = (int)$stdClass->linked_leads_id;
-        foreach ($stdClass->tags as $tag) {
-            $contact->tags[$tag->id] = $tag->name;
-        }
-        $contact->customFields = array();
-        foreach ($stdClass->custom_fields as $custom_field) {
-            $customField = CustomField::loadInStdClass($custom_field);
-            if ($customField->getCode() == 'PHONE') {
-                $contact->phones = $customField;
-            } elseif ($customField->getCode() == 'EMAIL') {
-                $contact->emails = $customField;
-            } else {
-                $contact->customFields[$customField->getId()] = $customField;
+        Base::loadInStdClass($stdClass);
+        $this->linkedLeadsId = (int)$stdClass->linked_leads_id;
+        $this->customFields = array();
+        if (is_array($stdClass->tags)) {
+            foreach ($stdClass->custom_fields as $custom_field) {
+                $customField = CustomField::loadInStdClass($custom_field);
+                if ($customField->getCode() == 'PHONE') {
+                    $this->phones = $customField;
+                } elseif ($customField->getCode() == 'EMAIL') {
+                    $this->emails = $customField;
+                } else {
+                    $this->customFields[$customField->getId()] = $customField;
+                }
             }
         }
-        return $contact;
     }
 
     /**
-     * @return array
+     * @return bool
      */
     public function save()
     {
-        $contact = array(
-            'name' => $this->name,
-            'linked_leads_id' => $this->linkedLeadsId,
-            'linked_company_id' => $this->linkedCompanyId,
-            'responsible_user_id' => $this->responsibleUserId,
-        );
-        if (empty($this->id)) {
-            $method = 'add';
-            $contact['created_user_id'] = 0;
-
-        } else {
-            $method = 'update';
-            $contact['id'] = $this->id;
-            $contact['last_modified'] = date('U');
-            $contact['modified_user_id'] = 0;
-        }
-        if (is_array($this->tags))
-            $contact['tags'] = implode(',', $this->tags);
         $customFields = $this->customFields;
         $customFields[] = $this->phones;
         $customFields[] = $this->emails;
-        if (!empty($customFields)) {
-            /** @var CustomField $customFieldObj */
-            foreach ($customFields as $customFieldObj) {
-                $customField = array(
-                    'id' => $customFieldObj->getId(),
-                );
-                $values = array();
-                foreach ($customFieldObj->getValues() as $valueObj) {
-                    $value = array(
-                        'enum' => $valueObj->getEnum(),
-                        'value' => $valueObj->getValue(),
-                        'subtype' => $valueObj->getSubtype(),
-                    );
-                    $values[] = $value;
-                }
-                $customField['values'] = $values;
-                $contact['custom_fields'][] = $customField;
-            }
-        }
-        $contacts['request']['contacts'][$method] = array(
-            $contact
+        $data = array(
+            'linked_leads_id' => $this->linkedLeadsId,
         );
-        return array('type' => 'contacts', 'data' => $contacts);
+        return Base::save($data, $customFields);
+
     }
 
     /**
@@ -153,8 +99,12 @@ class Contact extends Base
     public function addPhone($phone, $enum = 'OTHER')
     {
         $enum = mb_strtoupper($enum);
-        $idPhoneEnums = $this->info->get('idPhoneEnums');
+        $idPhoneEnums = Amo::$info->get('idPhoneEnums');
         if (array_key_exists($enum, $idPhoneEnums)) {
+            foreach ($this->phones->getValues() as $value) {
+                if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone))
+                    return true;
+            }
             $this->phones->addValue(new Value($phone, $idPhoneEnums[$enum]));
             return true;
         }
@@ -196,8 +146,12 @@ class Contact extends Base
     public function addEmail($email, $enum = 'OTHER')
     {
         $enum = mb_strtoupper($enum);
-        $idEmailEnums = $this->info->get('idEmailEnums');
+        $idEmailEnums = Amo::$info->get('idEmailEnums');
         if (array_key_exists($enum, $idEmailEnums)) {
+            foreach ($this->emails->getValues() as $value) {
+                if ($value->getValue() == $email)
+                    return true;
+            }
             $this->emails->addValue(new Value($email, $idEmailEnums[$enum]));
             return true;
         }
@@ -217,41 +171,6 @@ class Contact extends Base
             }
         }
         return false;
-    }
-
-    /**
-     * @param string|int $customFieldNameOrId
-     * @param string $value
-     * @return bool
-     */
-    public function addCustomField($customFieldNameOrId, $value)
-    {
-        $valueObj = new Value($value);
-        if (array_key_exists($customFieldNameOrId, $this->info->get('idContactCustomFields'))) {
-            $customFieldObj = new CustomField($customFieldNameOrId, array($valueObj), $this->info->get('idContactCustomFields')[$customFieldNameOrId]);
-        } elseif (in_array($customFieldNameOrId, $this->info->get('idContactCustomFields'))) {
-            $customFieldObj = new CustomField(array_search($customFieldNameOrId, $this->info->get('idContactCustomFields')), array($valueObj), $customFieldNameOrId);
-        } else
-            return false;
-        $this->customFields[$customFieldObj->getId()] = $customFieldObj;
-        return true;
-    }
-
-    /**
-     * @param string|int $customFieldNameOrId
-     * @return bool
-     */
-    public function delCustomField($customFieldNameOrId)
-    {
-        if (array_key_exists($customFieldNameOrId, $this->info->get('idContactCustomFields'))) {
-            $customFieldId = $customFieldNameOrId;
-        } elseif (in_array($customFieldNameOrId, $this->info->get('idContactCustomFields'))) {
-            $customFieldId = array_search($customFieldNameOrId, $this->info->get('idContactCustomFields'));
-        } else
-            return false;
-        if (array_key_exists($customFieldId, $this->customFields))
-            $this->customFields[$customFieldId]->delAllValues();
-        return true;
     }
 
     /**
