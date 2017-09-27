@@ -14,22 +14,7 @@ namespace AmoCRM;
  */
 class Note extends Base
 {
-    /**
-     * @var int
-     */
-    private $type;
-    /**
-     * @var int
-     */
-    private $elementId;
-    /**
-     * @var int
-     */
-    private $elementType;
-    /**
-     * @var string
-     */
-    private $text;
+
     /**
      * @var bool
      */
@@ -66,80 +51,6 @@ class Note extends Base
         $this->text = $stdClass->text;
         $this->editable = $stdClass->editable == 'Y';
         $this->attachment = $stdClass->ATTACHEMENT;
-    }
-
-    /**
-     * @return int
-     */
-    public function getType()
-    {
-        return $this->type;
-    }
-
-    /**
-     * @param int $type
-     */
-    public function setType($type)
-    {
-        $this->type = $type;
-    }
-
-    /**
-     * @return int
-     */
-    public function getElementId()
-    {
-        return $this->elementId;
-    }
-
-    /**
-     * @param int $elementId
-     */
-    public function setElementId($elementId)
-    {
-        $this->elementId = $elementId;
-    }
-
-    /**
-     * @return int
-     */
-    public function getElementType()
-    {
-        return $this->elementType;
-    }
-
-    /**
-     * @return bool|string
-     */
-    public function getElementTypeName()
-    {
-        if (array_key_exists($this->elementType, Amo::$info->get('ElementType')))
-            return Amo::$info->get('ElementType')[$this->elementType];
-        return false;
-    }
-
-    /**
-     * @param int $elementType
-     */
-    public function setElementType($elementType)
-    {
-        $this->elementType = $elementType;
-    }
-
-    /**
-     * @return string
-     */
-    public function getText()
-    {
-        return $this->text;
-    }
-
-    /**
-     * @param string $text
-     */
-    public function setText($text)
-    {
-        $this->text = $text;
     }
 
     /**

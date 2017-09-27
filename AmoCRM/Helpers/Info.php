@@ -33,7 +33,7 @@ class Info
     /**
      * @var array
      */
-    private $idUsers;
+    private $usersIdAndName;
     /**
      * @var array
      */
@@ -57,12 +57,11 @@ class Info
     /**
      * @var array
      */
-    private $ElementType = array(
-            1 => 'contact',
-            2 => 'lead',
-            3 => 'company',
-            4 => 'task',
-        );
+    private $elementType;
+    /**
+     * @var array
+     */
+    private $taskTypes;
 
     /**
      * Info constructor.
@@ -70,6 +69,12 @@ class Info
      */
     public function __construct($info)
     {
+        $this->elementType = array(
+            1 => 'contact',
+            2 => 'lead',
+            3 => 'company',
+            4 => 'task',
+        );
         $this->idContactCustomFieldsEnums = array();
         foreach ($info->custom_fields->contacts as $field) {
             $this->idContactCustomFields[$field->id] = $field->name;
@@ -93,7 +98,7 @@ class Info
             }
         }
         foreach ($info->users as $user) {
-            $this->idUsers[$user->id] = $user->name;
+            $this->usersIdAndName[$user->id] = $user->name;
         }
         $this->pipelines = array();
         foreach ($info->pipelines as $pipeline) {
@@ -105,6 +110,9 @@ class Info
                     'color' => $status->color
                 );
             }
+        }
+        foreach ($info->task_types as $type) {
+            $this->taskTypes[$type->id] = $type->name;
         }
     }
 
