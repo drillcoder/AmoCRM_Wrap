@@ -343,10 +343,10 @@ abstract class Base
 
     /**
      * @param string|int $customFieldNameOrId
-     * @param string $value
+     * @param string $values
      * @return bool
      */
-    public function setCustomField($customFieldNameOrId, $value = null)
+    public function setCustomField($customFieldNameOrId, $values = null)
     {
         $type = self::getTypeObj();
         $idCustomFields = Amo::$info->get("id{$type}CustomFields");
@@ -358,18 +358,22 @@ abstract class Base
             $customFieldName = $customFieldNameOrId;
         } else
             return false;
-        if (empty($value)) {
+        if (empty($values)) {
             if (array_key_exists($customFieldId, $this->customFields)) {
                 $this->customFields[$customFieldId]->delAllValues();
             }
         } else {
-            if (Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId]) {
-                $enum = array_search($value, Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId]);
-            } else {
-                $enum = null;
+            $values = explode(';', $values);
+            foreach ($values as $value) {
+                $value = trim($value);
+                if (Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId]) {
+                    $enum = array_search($value, Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId]);
+                } else {
+                    $enum = null;
+                }
+                $valueObj[] = new Value($value, $enum);
             }
-            $valueObj = new Value($value, $enum);
-            $customFieldObj = new CustomField($customFieldId, array($valueObj), $customFieldName);
+            $customFieldObj = new CustomField($customFieldId, $valueObj, $customFieldName);
             $this->customFields[$customFieldObj->getId()] = $customFieldObj;
         }
         return true;
