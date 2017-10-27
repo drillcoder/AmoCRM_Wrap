@@ -66,6 +66,10 @@ class Value
      */
     public static function loadInStdClass($stdClass)
     {
+        if (!isset($stdClass->enum))
+            $stdClass->enum = null;
+        if (!isset($stdClass->subtype))
+            $stdClass->subtype = null;
         return new Value($stdClass->value, $stdClass->enum, $stdClass->subtype);
     }
 

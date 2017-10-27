@@ -7,6 +7,7 @@
  */
 
 namespace AmoCRM\Helpers;
+use AmoCRM\Amo;
 
 /**
  * Class CustomField
@@ -56,6 +57,8 @@ class CustomField
         foreach ($stdClass->values as $valueStdClass) {
             $values[] = Value::loadInStdClass($valueStdClass);
         }
+        if (!isset($stdClass->code))
+            $stdClass->code = null;
         return new CustomField($stdClass->id, $values, $stdClass->name, $stdClass->code);
     }
 
@@ -65,6 +68,23 @@ class CustomField
     public function getId()
     {
         return $this->id;
+    }
+
+    /**
+     * @param string $type
+     * @param string|int $nameOrId
+     * @return int|null
+     */
+    public static function getIdFromNameOrId($type, $nameOrId)
+    {
+        $idsCustomFields = Amo::$info->get("id{$type}CustomFields");
+        if (array_key_exists($nameOrId, $idsCustomFields)) {
+            $id = $nameOrId;
+        } elseif (in_array($nameOrId, $idsCustomFields)) {
+            $id = array_search($nameOrId, $idsCustomFields);
+        } else
+            return null;
+        return $id;
     }
 
     /**

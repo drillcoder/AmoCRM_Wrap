@@ -34,7 +34,7 @@ class Task extends Base
             'task_type' => $this->type,
             'text' => $this->text,
         );
-        return Base::save($data);
+        return Base::saveBase($data);
     }
 
     /**

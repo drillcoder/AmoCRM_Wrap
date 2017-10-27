@@ -65,7 +65,19 @@ class Lead extends Base
             'price' => $this->price,
             'status_id' => $this->statusId,
         );
-        return Base::save($data, $customFields);
+        return Base::saveBase($data, $customFields);
+    }
+
+    public function getRaw()
+    {
+        $customFields = $this->customFields;
+        $data = array(
+            'main_contact_id' => $this->mainContactId,
+            'pipeline_id' => $this->pipelineId,
+            'price' => $this->price,
+            'status_id' => $this->statusId,
+        );
+        return Base::getRawBase($data, $customFields);
     }
 
     /**
@@ -101,26 +113,38 @@ class Lead extends Base
     }
 
     /**
-     * @param int|string $idOrName
+     * @param int|string $idOrNamePipeline
+     * @param int|string $idOrNameStatus
      * @return bool
      */
-    public function setStatus($idOrName)
+    public function setStatus($idOrNamePipeline, $idOrNameStatus)
     {
-        if (array_key_exists($idOrName, Amo::$info->get('pipelines')[$this->pipelineId]['statuses'])) {
-            $id = $idOrName;
+        if (array_key_exists($idOrNamePipeline, Amo::$info->get('pipelines'))) {
+            $this->pipelineId = $idOrNamePipeline;
         } else {
-            $statuses = Amo::$info->get('pipelines')[$this->pipelineId]['statuses'];
-            $statusesArray = array();
-            foreach ($statuses as $statusId => $status) {
-                $statusesArray[$statusId] = $status['name'];
-            }
-            if (in_array($idOrName, $statusesArray)) {
-                $id = array_search($idOrName, $statusesArray);
-            } else {
-                return false;
+            foreach (Amo::$info->get('pipelines') as $id => $pipeline) {
+                if (mb_strtolower($pipeline['name']) == mb_strtolower($idOrNamePipeline)) {
+                    $this->pipelineId = $id;
+                    break;
+                }
             }
         }
-        $this->statusId = $id;
+        if (empty($this->pipelineId)) {
+            return false;
+        }
+        if (array_key_exists($idOrNameStatus, Amo::$info->get('pipelines')[$this->pipelineId]['statuses'])) {
+            $this->statusId = $idOrNameStatus;
+        } else {
+            foreach (Amo::$info->get('pipelines')[$this->pipelineId]['statuses'] as $id => $pipeline) {
+                if (mb_strtolower($pipeline['name']) == mb_strtolower($idOrNameStatus)) {
+                    $this->statusId = $id;
+                    break;
+                }
+            }
+        }
+        if (empty($this->statusId)) {
+            return false;
+        }
         return true;
     }
 

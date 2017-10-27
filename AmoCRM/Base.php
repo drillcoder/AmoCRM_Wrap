@@ -89,49 +89,19 @@ abstract class Base
      * @param CustomField[] $customFields
      * @return bool
      */
-    public function save($data, $customFields = null)
+    public function saveBase($data, $customFields = array())
     {
-        $data = array_merge($data, array(
-            'name' => $this->name,
-            'responsible_user_id' => $this->responsibleUserId,
-            'linked_company_id' => $this->linkedCompanyId,
-        ));
         if (empty($this->id)) {
             $method = 'add';
-            $data['created_user_id'] = 0;
-
         } else {
             $method = 'update';
-            $data['id'] = $this->id;
-            $data['last_modified'] = date('U');
-            $data['modified_user_id'] = 0;
         }
-        if (is_array($this->tags))
-            $data['tags'] = implode(',', $this->tags);
-        if (!empty($customFields)) {
-            /** @var CustomField $customFieldObj */
-            foreach ($customFields as $customFieldObj) {
-                $customField = array(
-                    'id' => $customFieldObj->getId(),
-                );
-                $values = array();
-                foreach ($customFieldObj->getValues() as $valueObj) {
-                    $value = array(
-                        'enum' => $valueObj->getEnum(),
-                        'value' => $valueObj->getValue(),
-                        'subtype' => $valueObj->getSubtype(),
-                    );
-                    $values[] = $value;
-                }
-                $customField['values'] = $values;
-                $data['custom_fields'][] = $customField;
-            }
-        }
+        $data = $this->getRawBase($data, $customFields);
         $type = mb_strtolower(self::getTypeObj()) . 's';
         $requestData['request'][$type][$method] = array(
             $data
         );
-        $res = Amo::cUrl("v2/json/$type/set", 'post', $requestData);
+        $res = Amo::cUrl("private/api/v2/json/$type/set", 'post', $requestData);
         if ($method == 'update') {
             if ($res->{$type}->update[0]->id == $this->id)
                 return true;
@@ -149,7 +119,7 @@ abstract class Base
     protected function loadInId($id)
     {
         $type = mb_strtolower(self::getTypeObj()) . 's';
-        $link = "v2/json/$type/list?id=$id";
+        $link = "private/api/v2/json/$type/list?id=$id";
         if ($type == 'notes') {
             $note = $this;
             /** @var Note $note */
@@ -241,7 +211,7 @@ abstract class Base
      */
     public function setResponsibleUserId($responsibleUserIdOrName)
     {
-        $idUsers = Amo::$info->get('idUsers');
+        $idUsers = Amo::$info->get('usersIdAndName');
         if (array_key_exists($responsibleUserIdOrName, $idUsers)) {
             $this->responsibleUserId = $responsibleUserIdOrName;
             return true;
@@ -302,24 +272,63 @@ abstract class Base
     }
 
     /**
+     * @param string $name
+     * @param string $type
+     * @return int|false
+     */
+    public function addCustomField($name, $type)
+    {
+        $elementType = array_search(mb_strtolower(self::getTypeObj()), Amo::$info->get('elementType'));
+        $data['request']['fields']['add'] = array(
+            array(
+                "name" => $name,
+                "type" => $type,
+                "element_type" => $elementType,
+                "origin" => 'AmoCRM Wrap'
+            )
+        );
+        $link = 'private/api/v2/json/fields/set';
+        $res = Amo::cUrl($link, 'post', $data);
+        if ($res)
+            return $res->fields->add[0]->id;
+        return false;
+    }
+
+    /**
+     * @param $nameOrId
+     * @return bool
+     */
+    public function delCustomField($nameOrId)
+    {
+        $id = CustomField::getIdFromNameOrId(self::getTypeObj(), $nameOrId);
+        if (empty($id))
+            return false;
+        $data['request']['fields']['delete'] = array(
+            array(
+                "id" => $id,
+                "origin" => 'AmoCRM Wrap'
+            )
+        );
+        $link = 'private/api/v2/json/fields/set';
+        $res = Amo::cUrl($link, 'post', $data);
+        if ($res)
+            return $res->fields->delete[0]->id == $id;
+        return false;
+    }
+
+
+    /**
      * @param string|int $nameOrId
      * @return string|null;
      */
     public function getCustomField($nameOrId)
     {
-        $type = self::getTypeObj();
-        $idCustomFields = Amo::$info->get("id{$type}CustomFields");
-        if (array_key_exists($nameOrId, $idCustomFields)) {
-            $id = $nameOrId;
-        } elseif (in_array($nameOrId, $idCustomFields)) {
-            $id = array_search($nameOrId, $idCustomFields);
-        } else
-            return null;
+        $id = CustomField::getIdFromNameOrId(self::getTypeObj(), $nameOrId);
         $values = array();
         foreach ($this->customFields[$id]->getValues() as $value) {
             $values[] = $value->getValue();
         }
-        return implode(', ', $values);
+        return implode('; ', $values);
     }
 
     /**
@@ -364,9 +373,10 @@ abstract class Base
             }
         } else {
             $values = explode(';', $values);
+            $valueObj = array();
             foreach ($values as $value) {
                 $value = trim($value);
-                if (Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId]) {
+                if (isset(Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId])) {
                     $enum = array_search($value, Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId]);
                 } else {
                     $enum = null;
@@ -454,6 +464,50 @@ abstract class Base
     }
 
     /**
+     * @param array $data
+     * @param CustomField[] $customFields
+     * @return array
+     */
+    public function getRawBase($data, $customFields)
+    {
+        $data = array_merge($data, array(
+            'name' => $this->name,
+            'responsible_user_id' => $this->responsibleUserId,
+            'linked_company_id' => $this->linkedCompanyId,
+        ));
+        if (empty($this->id)) {
+            $data['created_user_id'] = 0;
+
+        } else {
+            $data['id'] = $this->id;
+            $data['last_modified'] = date('U');
+            $data['modified_user_id'] = 0;
+        }
+        if (is_array($this->tags))
+            $data['tags'] = implode(',', $this->tags);
+        if (!empty($customFields)) {
+            /** @var CustomField $customFieldObj */
+            foreach ($customFields as $customFieldObj) {
+                $customField = array(
+                    'id' => $customFieldObj->getId(),
+                );
+                $values = array();
+                foreach ($customFieldObj->getValues() as $valueObj) {
+                    $value = array(
+                        'enum' => $valueObj->getEnum(),
+                        'value' => $valueObj->getValue(),
+                        'subtype' => $valueObj->getSubtype(),
+                    );
+                    $values[] = $value;
+                }
+                $customField['values'] = $values;
+                $data['custom_fields'][] = $customField;
+            }
+        }
+        return $data;
+    }
+
+    /**
      * @param string $text
      * @param int $type
      * @return bool
@@ -479,7 +533,7 @@ abstract class Base
      * @param int|string|null $responsibleUserIdOrName
      * @return bool
      */
-    public function addTask($text, $completeTill = null, $typeId = 3, $responsibleUserIdOrName = null)
+    public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
     {
         if ($responsibleUserIdOrName === null) {
             $responsibleUserIdOrName = $this->responsibleUserId;
@@ -499,9 +553,6 @@ abstract class Base
         else
             return false;
         $task->save();
-        echo '<pre>';
-        var_dump($task);
-        echo '</pre>';
-        die;
+        return true;
     }
 }

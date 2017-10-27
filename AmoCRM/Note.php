@@ -35,7 +35,7 @@ class Note extends Base
             'note_type' => $this->type,
             'text' => $this->text,
         );
-        return Base::save($data);
+        return Base::saveBase($data);
     }
 
     /**

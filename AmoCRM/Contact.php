@@ -48,9 +48,9 @@ class Contact extends Base
     public function loadInStdClass($stdClass)
     {
         Base::loadInStdClass($stdClass);
-        $this->linkedLeadsId = (int)$stdClass->linked_leads_id;
+        $this->linkedLeadsId = $stdClass->linked_leads_id;
         $this->customFields = array();
-        if (is_array($stdClass->tags)) {
+        if (is_array($stdClass->custom_fields)) {
             foreach ($stdClass->custom_fields as $custom_field) {
                 $customField = CustomField::loadInStdClass($custom_field);
                 if ($customField->getCode() == 'PHONE') {
@@ -75,8 +75,21 @@ class Contact extends Base
         $data = array(
             'linked_leads_id' => $this->linkedLeadsId,
         );
-        return Base::save($data, $customFields);
+        return Base::saveBase($data, $customFields);
+    }
 
+    /**
+     * @return array
+     */
+    public function getRaw()
+    {
+        $customFields = $this->customFields;
+        $customFields[] = $this->phones;
+        $customFields[] = $this->emails;
+        $data = array(
+            'linked_leads_id' => $this->linkedLeadsId,
+        );
+        return Base::getRawBase($data, $customFields);
     }
 
     /**

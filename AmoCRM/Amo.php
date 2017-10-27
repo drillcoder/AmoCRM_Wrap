@@ -55,10 +55,13 @@ class Amo
     public static function cUrl($url, $method, $data = array())
     {
         if (self::$authorization) {
+            if (stripos($url, 'unsorted') !== false) {
+                $url .= '?login=' . self::$userLogin . '&api_key=' . self::$userHash;
+            }
             $curl = curl_init();
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
-            curl_setopt($curl, CURLOPT_URL, 'https://' . self::$domain . '.amocrm.ru/private/api/' . $url);
+            curl_setopt($curl, CURLOPT_URL, 'https://' . self::$domain . '.amocrm.ru/' . $url);
             curl_setopt($curl, CURLOPT_HEADER, false);
             if ($method == 'post') {
                 curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'POST');
@@ -72,7 +75,8 @@ class Amo
             $out = curl_exec($curl);
             curl_close($curl);
             $response = json_decode($out);
-            return $response->response;
+            if ($response)
+                return $response->response;
         }
         return false;
     }
@@ -94,11 +98,16 @@ class Amo
             'USER_LOGIN' => self::$userLogin,
             'USER_HASH' => self::$userHash
         );
-        $link = 'auth.php?type=json';
+        $link = 'private/api/auth.php?type=json';
         $res = self::cUrl($link, 'post', $user);
-        self::$authorization = $res->auth;
-        if (self::$authorization)
-            self::$info = new Info(self::loadInfo());
+        if (file_exists(__DIR__ . '/cookie.txt')) {
+            self::$authorization = $res->auth;
+            if (self::$authorization)
+                self::$info = new Info(self::loadInfo());
+        } else {
+            echo 'Недостаточно прав для создания файлов!';
+            self::$authorization = false;
+        }
         return self::$authorization;
     }
 
@@ -113,9 +122,9 @@ class Amo
     /**
      * @return false|mixed
      */
-    private function loadInfo()
+    private static function loadInfo()
     {
-        $link = 'v2/json/accounts/current';
+        $link = 'private/api/v2/json/accounts/current';
         $res = Amo::cUrl($link, 'get');
         return $res->account;
     }
@@ -127,7 +136,7 @@ class Amo
      */
     public static function searchContact($phone, $email = null)
     {
-        $link = 'v2/json/contacts/list?query=';
+        $link = 'private/api/v2/json/contacts/list?query=';
         $contacts = array();
         if (!empty($phone)) {
             $phone = self::clearPhone($phone);

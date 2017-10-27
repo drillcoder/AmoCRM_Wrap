@@ -69,6 +69,10 @@ class Info
      */
     public function __construct($info)
     {
+//        echo '<pre>';
+//        var_dump($info);
+//        echo '</pre>';
+//        die;
         $this->elementType = array(
             1 => 'contact',
             2 => 'lead',
