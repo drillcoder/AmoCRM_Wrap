@@ -119,29 +119,11 @@ class Lead extends Base
      */
     public function setStatus($idOrNamePipeline, $idOrNameStatus)
     {
-        if (array_key_exists($idOrNamePipeline, Amo::$info->get('pipelines'))) {
-            $this->pipelineId = $idOrNamePipeline;
-        } else {
-            foreach (Amo::$info->get('pipelines') as $id => $pipeline) {
-                if (mb_strtolower($pipeline['name']) == mb_strtolower($idOrNamePipeline)) {
-                    $this->pipelineId = $id;
-                    break;
-                }
-            }
-        }
+        $this->pipelineId = Amo::$info->getPipelineIdFromIdOrName($idOrNamePipeline);
         if (empty($this->pipelineId)) {
             return false;
         }
-        if (array_key_exists($idOrNameStatus, Amo::$info->get('pipelines')[$this->pipelineId]['statuses'])) {
-            $this->statusId = $idOrNameStatus;
-        } else {
-            foreach (Amo::$info->get('pipelines')[$this->pipelineId]['statuses'] as $id => $pipeline) {
-                if (mb_strtolower($pipeline['name']) == mb_strtolower($idOrNameStatus)) {
-                    $this->statusId = $id;
-                    break;
-                }
-            }
-        }
+        $this->statusId = Amo::$info->getStatusIdFromNameOrId($this->pipelineId, $idOrNameStatus);
         if (empty($this->statusId)) {
             return false;
         }
@@ -165,31 +147,6 @@ class Lead extends Base
     }
 
     /**
-     * @param int|string $idOrNamePipeline
-     * @param int|string $idOrNameStatus
-     * @return bool
-     */
-    public function setPipeline($idOrNamePipeline, $idOrNameStatus)
-    {
-        if (array_key_exists($idOrNamePipeline, Amo::$info->get('pipelines'))) {
-            $idPipeline = $idOrNamePipeline;
-        } else {
-            $pipelines = Amo::$info->get('pipelines');
-            $pipelinesArray = array();
-            foreach ($pipelines as $pipelineId => $pipeline) {
-                $pipelinesArray[$pipelineId] = $pipeline['name'];
-            }
-            if (in_array($idOrNamePipeline, $pipelinesArray)) {
-                $idPipeline = array_search($idOrNamePipeline, $pipelinesArray);
-            } else {
-                return false;
-            }
-        }
-        $this->pipelineId = $idPipeline;
-        return $this->setStatus($idOrNameStatus);
-    }
-
-    /**
      * @return int
      */
     public function getMainContactId()
@@ -205,4 +162,29 @@ class Lead extends Base
         $this->mainContactId = $mainContactId;
     }
 
+    /**
+     * @param string $text
+     * @param int $type
+     * @return bool
+     */
+    public function addNote($text, $type = 4)
+    {
+        if (empty($this->id))
+            $this->save();
+        return parent::addNote($text, $type);
+    }
+
+    /**
+     * @param string $text
+     * @param \DateTime|null $completeTill
+     * @param int|string $typeId
+     * @param int|string|null $responsibleUserIdOrName
+     * @return bool
+     */
+    public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
+    {
+        if (empty($this->id))
+            $this->save();
+        return parent::addTask($text, $responsibleUserIdOrName, $completeTill, $typeId);
+    }
 }

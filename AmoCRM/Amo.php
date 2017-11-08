@@ -81,7 +81,6 @@ class Amo
         return false;
     }
 
-
     /**
      * @param string $domain
      * @param string $userLogin

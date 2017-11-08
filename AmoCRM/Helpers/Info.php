@@ -128,4 +128,42 @@ class Info
     {
         return $this->$prop;
     }
+
+    /**
+     * @param int|string $idOrNamePipeline
+     * @return int|null
+     */
+    public function getPipelineIdFromIdOrName($idOrNamePipeline)
+    {
+        if (array_key_exists($idOrNamePipeline, $this->pipelines)) {
+            return $idOrNamePipeline;
+        } else {
+            foreach ($this->pipelines as $id => $pipeline) {
+                if (mb_strtolower($pipeline['name']) == mb_strtolower($idOrNamePipeline)) {
+                    return $id;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param int $idOrNamePipeline
+     * @param int|string $idOrNameStatus
+     * @return int|null
+     */
+    public function getStatusIdFromStatusIdOrNameAndPipelineIdOrName($idOrNamePipeline, $idOrNameStatus)
+    {
+        $pipelineId = $this->getPipelineIdFromIdOrName($idOrNamePipeline);
+        if (array_key_exists($idOrNameStatus, $this->pipelines[$pipelineId]['statuses'])) {
+            return $idOrNameStatus;
+        } else {
+            foreach ($this->pipelines[$pipelineId]['statuses'] as $id => $pipeline) {
+                if (mb_strtolower($pipeline['name']) == mb_strtolower($idOrNameStatus)) {
+                    return $id;
+                }
+            }
+        }
+        return null;
+    }
 }

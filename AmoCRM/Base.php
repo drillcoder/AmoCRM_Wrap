@@ -103,7 +103,8 @@ abstract class Base
         );
         $res = Amo::cUrl("private/api/v2/json/$type/set", 'post', $requestData);
         if ($method == 'update') {
-            if ($res->{$type}->update[0]->id == $this->id)
+            $idRes = $res->{$type}->update[0]->id;
+            if ($idRes == $this->id)
                 return true;
         } elseif ($method == 'add') {
             if ($this->loadInId($res->{$type}->add[0]->id))
@@ -461,6 +462,38 @@ abstract class Base
     public function setType($type)
     {
         $this->type = $type;
+    }
+
+    /**
+     * @return \DateTime
+     */
+    public function getDateCreate()
+    {
+        return $this->dateCreate;
+    }
+
+    /**
+     * @return \DateTime
+     */
+    public function getLastModified()
+    {
+        return $this->lastModified;
+    }
+
+    /**
+     * @return int
+     */
+    public function getCreatedUserId()
+    {
+        return $this->createdUserId;
+    }
+
+    /**
+     * @return int
+     */
+    public function getCreatedUserName()
+    {
+        return Amo::$info->get('usersIdAndName')[$this->createdUserId];
     }
 
     /**

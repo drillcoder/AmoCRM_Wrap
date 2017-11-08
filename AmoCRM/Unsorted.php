@@ -14,10 +14,29 @@ namespace AmoCRM;
  */
 class Unsorted
 {
+    /**
+     * @var int
+     */
     private $id;
+    /**
+     * @var string
+     */
     private $formName;
+    /**
+     * @var int
+     */
+    private $pipelineId;
+    /**
+     * @var Contact[]|array
+     */
     private $contacts = array();
+    /**
+     * @var Lead|array
+     */
     private $lead = array();
+    /**
+     * @var Company[]|array
+     */
     private $companies = array();
 
     /**
@@ -25,16 +44,23 @@ class Unsorted
      * @param string $formName
      * @param Contact[] $contacts
      * @param Lead $lead
+     * @param int|string $pipelineIdOrName
      * @param Company[] $companies
      */
-    public function __construct($formName, $contacts, $lead, $companies = array())
+    public function __construct($formName, $contacts, $lead, $pipelineIdOrName = null, $companies = array())
     {
         $this->contacts = $contacts;
         $this->lead = $lead;
         $this->companies = $companies;
         $this->formName = $formName;
+        if (!empty($pipelineIdOrName)) {
+            $this->pipelineId = Amo::$info->getPipelineIdFromIdOrName($pipelineIdOrName);
+        }
     }
 
+    /**
+     * @return bool
+     */
     public function save()
     {
         $lead = $this->lead->getRaw();
@@ -99,11 +125,12 @@ class Unsorted
                         'form_id' => 25,
                         'form_type' => 1,
                         'origin' => array(
-                            'referer' => $referer
+                            'referer' => $referer,
                         ),
                         'date' => date('U'),
                         'from' => $_SERVER['SERVER_NAME'],
-                        'form_name' => $this->formName
+                        'form_name' => $this->formName,
+                        'pipeline_id' => $this->pipelineId,
                     ),
                     'data' => array(
                         'contacts' => $contacts,
