@@ -48,11 +48,11 @@ class Amo
 
     /**
      * @param string $url
-     * @param string $method
+     * @param bool $isPost
      * @param array $data
-     * @return mixed|false
+     * @return mixed|null
      */
-    public static function cUrl($url, $method, $data = array())
+    public static function cUrl($url, $isPost = false, $data = array())
     {
         if (self::$authorization) {
             if (stripos($url, 'unsorted') !== false) {
@@ -63,7 +63,7 @@ class Amo
             curl_setopt($curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
             curl_setopt($curl, CURLOPT_URL, 'https://' . self::$domain . '.amocrm.ru/' . $url);
             curl_setopt($curl, CURLOPT_HEADER, false);
-            if ($method == 'post') {
+            if ($isPost) {
                 curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'POST');
                 curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
                 curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
@@ -78,7 +78,7 @@ class Amo
             if ($response)
                 return $response->response;
         }
-        return false;
+        return null;
     }
 
     /**
@@ -98,7 +98,7 @@ class Amo
             'USER_HASH' => self::$userHash
         );
         $link = 'private/api/auth.php?type=json';
-        $res = self::cUrl($link, 'post', $user);
+        $res = self::cUrl($link, true, $user);
         if (file_exists(__DIR__ . '/cookie.txt')) {
             self::$authorization = $res->auth;
             if (self::$authorization)
@@ -124,7 +124,7 @@ class Amo
     private static function loadInfo()
     {
         $link = 'private/api/v2/json/accounts/current';
-        $res = Amo::cUrl($link, 'get');
+        $res = Amo::cUrl($link);
         return $res->account;
     }
 
@@ -140,7 +140,7 @@ class Amo
         if (!empty($phone)) {
             $phone = self::clearPhone($phone);
             $linkPhone = $link . $phone;
-            $res = self::cUrl($linkPhone, 'get');
+            $res = self::cUrl($linkPhone);
             if ($res) {
                 foreach ($res->contacts as $stdClass) {
                     $contact = new Contact();
@@ -151,7 +151,7 @@ class Amo
         }
         if (!empty($email)) {
             $linkEmail = $link . $email;
-            $res = self::cUrl($linkEmail, 'get');
+            $res = self::cUrl($linkEmail);
             if ($res) {
                 foreach ($res->contacts as $stdClass) {
                     $contact = new Contact();
@@ -162,6 +162,26 @@ class Amo
         }
         if (!empty($contacts))
             return $contacts;
+        return null;
+    }
+
+    /**
+     * @param string $query
+     * @return Lead[]|null
+     */
+    public static function searchLead($query)
+    {
+        $link = "private/api/v2/json/leads/list?query=$query";
+        $res = Amo::cUrl($link);
+        if (!empty($res)) {
+            $leads = array();
+            foreach ($res->leads as $stdClass) {
+                $lead = new Lead();
+                $lead->loadInStdClass($stdClass);
+                $leads[$lead->getId()] = $lead;
+            }
+            return $leads;
+        }
         return null;
     }
 }

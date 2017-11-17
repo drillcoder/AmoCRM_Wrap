@@ -26,6 +26,14 @@ abstract class Base
      */
     protected $name;
     /**
+     * @var CustomField
+     */
+    protected $phones;
+    /**
+     * @var CustomField
+     */
+    protected $emails;
+    /**
      * @var int
      */
     protected $createdUserId;
@@ -40,11 +48,19 @@ abstract class Base
     /**
      * @var int
      */
+    protected $modifiedUserId;
+    /**
+     * @var int
+     */
     protected $responsibleUserId;
     /**
      * @var int
      */
     protected $linkedCompanyId;
+    /**
+     * @var int[]
+     */
+    protected $linkedLeadsId;
     /**
      * @var string[]
      */
@@ -78,6 +94,8 @@ abstract class Base
     {
         $this->customFields = array();
         $this->tags = array();
+        $this->phones = new CustomField(Amo::$info->get('phoneFieldId'));
+        $this->emails = new CustomField(Amo::$info->get('emailFieldId'));
         $id = (int)$id;
         if (!empty($id)) {
             $this->loadInId($id);
@@ -86,22 +104,23 @@ abstract class Base
 
     /**
      * @param array $data
-     * @param CustomField[] $customFields
      * @return bool
      */
-    public function saveBase($data, $customFields = array())
+    public function saveBase($data = array())
     {
         if (empty($this->id)) {
             $method = 'add';
         } else {
             $method = 'update';
         }
-        $data = $this->getRawBase($data, $customFields);
-        $type = mb_strtolower(self::getTypeObj()) . 's';
-        $requestData['request'][$type][$method] = array(
-            $data
-        );
-        $res = Amo::cUrl("private/api/v2/json/$type/set", 'post', $requestData);
+        $typeObj = self::getTypeObj();
+        $type = $typeObj != 'Company' ? mb_strtolower(self::getTypeObj()) . 's' : 'contacts';
+        $requestData['request'][$type][$method] = array($this->getRawBase($data));
+        if ($typeObj == 'Company') {
+            $res = Amo::cUrl("private/api/v2/json/company/set", true, $requestData);
+        } else {
+            $res = Amo::cUrl("private/api/v2/json/$type/set", true, $requestData);
+        }
         if ($method == 'update') {
             $idRes = $res->{$type}->update[0]->id;
             if ($idRes == $this->id)
@@ -119,14 +138,18 @@ abstract class Base
      */
     protected function loadInId($id)
     {
-        $type = mb_strtolower(self::getTypeObj()) . 's';
+        $type = mb_strtolower(self::getTypeObj());
+        if ($type != 'company')
+            $type .= 's';
         $link = "private/api/v2/json/$type/list?id=$id";
         if ($type == 'notes') {
             $note = $this;
             /** @var Note $note */
             $link .= "&type={$note->getElementTypeName()}";
         }
-        $res = Amo::cUrl($link, 'get');
+        $res = Amo::cUrl($link);
+        if ($type == 'company')
+            $type = 'contacts';
         if ($res) {
             $this->loadInStdClass($res->{$type}[0]);
             return true;
@@ -148,11 +171,28 @@ abstract class Base
         $lastModified = new \DateTime();
         $lastModified->setTimestamp($stdClass->last_modified);
         $this->lastModified = $lastModified;
+        if (isset($stdClass->modified_user_id))
+            $this->modifiedUserId = (int)$stdClass->modified_user_id;
         $this->responsibleUserId = (int)$stdClass->responsible_user_id;
-        $this->linkedCompanyId = (int)$stdClass->linked_company_id;
+        if (isset($stdClass->linked_company_id))
+            $this->linkedCompanyId = (int)$stdClass->linked_company_id;
+        if (isset($stdClass->linked_leads_id))
+            $this->linkedLeadsId = $stdClass->linked_leads_id;
         if (is_array($stdClass->tags)) {
             foreach ($stdClass->tags as $tag) {
                 $this->tags[$tag->id] = $tag->name;
+            }
+        }
+        if (is_array($stdClass->custom_fields)) {
+            foreach ($stdClass->custom_fields as $custom_field) {
+                $customField = CustomField::loadInStdClass($custom_field);
+                if ($customField->getCode() == 'PHONE') {
+                    $this->phones = $customField;
+                } elseif ($customField->getCode() == 'EMAIL') {
+                    $this->emails = $customField;
+                } else {
+                    $this->customFields[$customField->getId()] = $customField;
+                }
             }
         }
     }
@@ -210,7 +250,7 @@ abstract class Base
      * @param int|string $responsibleUserIdOrName
      * @return bool
      */
-    public function setResponsibleUserId($responsibleUserIdOrName)
+    public function setResponsibleUser($responsibleUserIdOrName)
     {
         $idUsers = Amo::$info->get('usersIdAndName');
         if (array_key_exists($responsibleUserIdOrName, $idUsers)) {
@@ -265,7 +305,8 @@ abstract class Base
      */
     public function delTag($tag)
     {
-        if ($key = array_search($tag, $this->tags) !== false) {
+        $key = array_search($tag, $this->tags);
+        if ($key !== false) {
             unset($this->tags[$key]);
             return true;
         }
@@ -289,7 +330,7 @@ abstract class Base
             )
         );
         $link = 'private/api/v2/json/fields/set';
-        $res = Amo::cUrl($link, 'post', $data);
+        $res = Amo::cUrl($link, true, $data);
         if ($res)
             return $res->fields->add[0]->id;
         return false;
@@ -311,7 +352,7 @@ abstract class Base
             )
         );
         $link = 'private/api/v2/json/fields/set';
-        $res = Amo::cUrl($link, 'post', $data);
+        $res = Amo::cUrl($link, true, $data);
         if ($res)
             return $res->fields->delete[0]->id == $id;
         return false;
@@ -483,13 +524,29 @@ abstract class Base
     /**
      * @return int
      */
+    public function getModifiedUserId()
+    {
+        return $this->modifiedUserId;
+    }
+
+    /**
+     * @return string
+     */
+    public function getModifiedUserName()
+    {
+        return Amo::$info->get('usersIdAndName')[$this->modifiedUserId];
+    }
+
+    /**
+     * @return int
+     */
     public function getCreatedUserId()
     {
         return $this->createdUserId;
     }
 
     /**
-     * @return int
+     * @return string
      */
     public function getCreatedUserName()
     {
@@ -497,16 +554,140 @@ abstract class Base
     }
 
     /**
+     * @return int[]
+     */
+    public function getLinkedLeadsId()
+    {
+        return $this->linkedLeadsId;
+    }
+
+    /**
+     * @param int $linkedLeadId
+     */
+    public function addLinkedLeadId($linkedLeadId)
+    {
+        $this->linkedLeadsId[] = $linkedLeadId;
+    }
+
+    /**
+     * @param int $linkedLeadId
+     * @return bool
+     */
+    public function delLinkedLeadId($linkedLeadId)
+    {
+        if ($key = array_search($linkedLeadId, $this->linkedLeadsId) !== false) {
+            unset($this->linkedLeadsId[$key]);
+            return true;
+        }
+        return false;
+    }
+
+
+    /**
+     * @return string[]
+     */
+    public function getPhones()
+    {
+        $phones = array();
+        foreach ($this->phones->getValues() as $value) {
+            $phones[] = $value->getValue();
+        }
+        return $phones;
+    }
+
+    /**
+     * @param string $phone
+     * @param string $enum
+     * @return bool
+     */
+    public function addPhone($phone, $enum = 'OTHER')
+    {
+        $enum = mb_strtoupper($enum);
+        $idPhoneEnums = Amo::$info->get('idPhoneEnums');
+        if (array_key_exists($enum, $idPhoneEnums)) {
+            foreach ($this->phones->getValues() as $value) {
+                if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone))
+                    return true;
+            }
+            $this->phones->addValue(new Value($phone, $idPhoneEnums[$enum]));
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param string $phone
+     * @return bool
+     */
+    public function delPhone($phone)
+    {
+        foreach ($this->phones->getValues() as $key => $value) {
+            if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone)) {
+                $this->phones->delValue($key);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getEmails()
+    {
+        $emails = array();
+        foreach ($this->emails->getValues() as $value) {
+            $emails[] = $value->getValue();
+        }
+        return $emails;
+    }
+
+    /**
+     * @param string $email
+     * @param string $enum
+     * @return bool
+     */
+    public function addEmail($email, $enum = 'OTHER')
+    {
+        $enum = mb_strtoupper($enum);
+        $idEmailEnums = Amo::$info->get('idEmailEnums');
+        if (array_key_exists($enum, $idEmailEnums)) {
+            foreach ($this->emails->getValues() as $value) {
+                if ($value->getValue() == $email)
+                    return true;
+            }
+            $this->emails->addValue(new Value($email, $idEmailEnums[$enum]));
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * @param string $email
+     * @return bool
+     */
+    public function delEmail($email)
+    {
+        foreach ($this->emails->getValues() as $key => $value) {
+            if ($value->getValue() == $email) {
+                $this->emails->delValue($key);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @param array $data
-     * @param CustomField[] $customFields
      * @return array
      */
-    public function getRawBase($data, $customFields)
+    public function getRawBase($data = array())
     {
         $data = array_merge($data, array(
             'name' => $this->name,
             'responsible_user_id' => $this->responsibleUserId,
             'linked_company_id' => $this->linkedCompanyId,
+            'linked_leads_id' => $this->linkedLeadsId,
         ));
         if (empty($this->id)) {
             $data['created_user_id'] = 0;
@@ -518,24 +699,25 @@ abstract class Base
         }
         if (is_array($this->tags))
             $data['tags'] = implode(',', $this->tags);
-        if (!empty($customFields)) {
-            /** @var CustomField $customFieldObj */
-            foreach ($customFields as $customFieldObj) {
-                $customField = array(
-                    'id' => $customFieldObj->getId(),
+        $customFields = $this->customFields;
+        $customFields[] = $this->phones;
+        $customFields[] = $this->emails;
+        /** @var CustomField $customFieldObj */
+        foreach ($customFields as $customFieldObj) {
+            $customField = array(
+                'id' => $customFieldObj->getId(),
+            );
+            $values = array();
+            foreach ($customFieldObj->getValues() as $valueObj) {
+                $value = array(
+                    'enum' => $valueObj->getEnum(),
+                    'value' => $valueObj->getValue(),
+                    'subtype' => $valueObj->getSubtype(),
                 );
-                $values = array();
-                foreach ($customFieldObj->getValues() as $valueObj) {
-                    $value = array(
-                        'enum' => $valueObj->getEnum(),
-                        'value' => $valueObj->getValue(),
-                        'subtype' => $valueObj->getSubtype(),
-                    );
-                    $values[] = $value;
-                }
-                $customField['values'] = $values;
-                $data['custom_fields'][] = $customField;
+                $values[] = $value;
             }
+            $customField['values'] = $values;
+            $data['custom_fields'][] = $customField;
         }
         return $data;
     }
@@ -578,7 +760,7 @@ abstract class Base
         if (in_array($typeId, $types))
             $typeId = array_search($typeId, $types);
         $task->setType($typeId);
-        $task->setResponsibleUserId($responsibleUserIdOrName);
+        $task->setResponsibleUser($responsibleUserIdOrName);
         $task->setElementId($this->id);
         $typeObj = mb_strtolower(self::getTypeObj());
         if (in_array($typeObj, Amo::$info->get('elementType')))

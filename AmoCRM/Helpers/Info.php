@@ -130,16 +130,16 @@ class Info
     }
 
     /**
-     * @param int|string $idOrNamePipeline
+     * @param int|string $pipelineIdOrName
      * @return int|null
      */
-    public function getPipelineIdFromIdOrName($idOrNamePipeline)
+    public function getPipelineIdFromIdOrName($pipelineIdOrName)
     {
-        if (array_key_exists($idOrNamePipeline, $this->pipelines)) {
-            return $idOrNamePipeline;
+        if (array_key_exists($pipelineIdOrName, $this->pipelines)) {
+            return $pipelineIdOrName;
         } else {
             foreach ($this->pipelines as $id => $pipeline) {
-                if (mb_strtolower($pipeline['name']) == mb_strtolower($idOrNamePipeline)) {
+                if (mb_strtolower($pipeline['name']) == mb_strtolower($pipelineIdOrName)) {
                     return $id;
                 }
             }

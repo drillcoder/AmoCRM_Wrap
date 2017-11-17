@@ -140,7 +140,7 @@ class Unsorted
                 )
             ),
         );
-        $response = Amo::cUrl('api/unsorted/add', 'post', $request);
+        $response = Amo::cUrl('api/unsorted/add', true, $request);
         if ($response->unsorted->add->status == 'success') {
             $this->id = $response->unsorted->add->data[0];
             return true;

@@ -2,17 +2,17 @@
 /**
  * Created by PhpStorm.
  * User: drillphoto
- * Date: 08.09.17
- * Time: 9:58
+ * Date: 15.11.2017
+ * Time: 19:04
  */
 
 namespace AmoCRM;
 
 /**
- * Class Contact
+ * Class Company
  * @package AmoCRM
  */
-class Contact extends Base
+class Company extends Base
 {
     /**
      * @return bool

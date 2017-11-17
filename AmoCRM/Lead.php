@@ -8,8 +8,6 @@
 
 namespace AmoCRM;
 
-use AmoCRM\Helpers\CustomField;
-
 /**
  * Class Lead
  * @package AmoCRM
@@ -45,12 +43,6 @@ class Lead extends Base
         $this->statusId = (int)$stdClass->status_id;
         $this->mainContactId = (int)$stdClass->main_contact_id;
         $this->customFields = array();
-        if (is_array($stdClass->tags)) {
-            foreach ($stdClass->custom_fields as $custom_field) {
-                $customField = CustomField::loadInStdClass($custom_field);
-                $this->customFields[$customField->getId()] = $customField;
-            }
-        }
     }
 
     /**
@@ -58,26 +50,27 @@ class Lead extends Base
      */
     public function save()
     {
-        $customFields = $this->customFields;
         $data = array(
             'main_contact_id' => $this->mainContactId,
             'pipeline_id' => $this->pipelineId,
             'price' => $this->price,
             'status_id' => $this->statusId,
         );
-        return Base::saveBase($data, $customFields);
+        return Base::saveBase($data);
     }
 
+    /**
+     * @return array
+     */
     public function getRaw()
     {
-        $customFields = $this->customFields;
         $data = array(
             'main_contact_id' => $this->mainContactId,
             'pipeline_id' => $this->pipelineId,
             'price' => $this->price,
             'status_id' => $this->statusId,
         );
-        return Base::getRawBase($data, $customFields);
+        return Base::getRawBase($data);
     }
 
     /**
@@ -123,7 +116,7 @@ class Lead extends Base
         if (empty($this->pipelineId)) {
             return false;
         }
-        $this->statusId = Amo::$info->getStatusIdFromNameOrId($this->pipelineId, $idOrNameStatus);
+        $this->statusId = Amo::$info->getStatusIdFromStatusIdOrNameAndPipelineIdOrName($this->pipelineId, $idOrNameStatus);
         if (empty($this->statusId)) {
             return false;
         }
@@ -160,6 +153,16 @@ class Lead extends Base
     public function setMainContactId($mainContactId)
     {
         $this->mainContactId = $mainContactId;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isClosed()
+    {
+        if ($this->statusId == 142 || $this->statusId == 143)
+            return true;
+        return false;
     }
 
     /**
