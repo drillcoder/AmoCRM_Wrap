@@ -120,6 +120,7 @@ class Unsorted
             'add' => array(
                 array(
                     'source' => 'AmoCRM Wrap by Drill',
+                    'pipeline_id' => $this->pipelineId,
                     'source_data' => array(
                         'data' => $data,
                         'form_id' => 25,
@@ -130,7 +131,6 @@ class Unsorted
                         'date' => date('U'),
                         'from' => $_SERVER['SERVER_NAME'],
                         'form_name' => $this->formName,
-                        'pipeline_id' => $this->pipelineId,
                     ),
                     'data' => array(
                         'contacts' => $contacts,
@@ -140,7 +140,7 @@ class Unsorted
                 )
             ),
         );
-        $response = Amo::cUrl('api/unsorted/add', true, $request);
+        $response = Amo::cUrl('api/unsorted/add', $request);
         if ($response->unsorted->add->status == 'success') {
             $this->id = $response->unsorted->add->data[0];
             return true;

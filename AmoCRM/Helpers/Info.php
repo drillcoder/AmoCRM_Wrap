@@ -166,4 +166,18 @@ class Info
         }
         return null;
     }
+
+    public function getUserIdFromIdOrName($userIdOrName)
+    {
+        if (array_key_exists($userIdOrName, $this->usersIdAndName)) {
+            return $userIdOrName;
+        } else {
+            foreach ($this->usersIdAndName as $id => $name) {
+                if (stripos($name, $userIdOrName) !== false) {
+                    return $id;
+                }
+            }
+        }
+        return null;
+    }
 }

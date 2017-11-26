@@ -74,6 +74,20 @@ class Lead extends Base
     }
 
     /**
+     * @return bool
+     */
+    public function delete()
+    {
+        if (parent::delete()) {
+            foreach ($this as $key => $item) {
+                $this->$key = null;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * @return int
      */
     public function getPrice()
@@ -189,5 +203,16 @@ class Lead extends Base
         if (empty($this->id))
             $this->save();
         return parent::addTask($text, $responsibleUserIdOrName, $completeTill, $typeId);
+    }
+
+    /**
+     * @param string $pathToFile
+     * @return bool
+     */
+    public function addFile($pathToFile)
+    {
+        if (empty($this->id))
+            $this->save();
+        return parent::addFile($pathToFile);
     }
 }

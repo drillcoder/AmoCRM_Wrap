@@ -38,6 +38,34 @@ class Amo
     public static $info;
 
     /**
+     * Amo constructor.
+     * @param $domain
+     * @param $userLogin
+     * @param $userHash
+     */
+    public function __construct($domain, $userLogin, $userHash)
+    {
+        self::$domain = $domain;
+        self::$userLogin = $userLogin;
+        self::$userHash = $userHash;
+        self::$authorization = true;
+        $user = array(
+            'USER_LOGIN' => $userLogin,
+            'USER_HASH' => $userHash
+        );
+        $res = self::cUrl('private/api/auth.php?type=json', $user);
+        if (file_exists(__DIR__ . '/cookie.txt')) {
+            self::$authorization = $res->auth;
+            if (self::$authorization) {
+                self::$info = new Info(self::loadInfo());
+            }
+        } else {
+            echo 'Недостаточно прав для создания файлов!';
+            self::$authorization = false;
+        }
+    }
+
+    /**
      * @param string $phone
      * @return integer
      */
@@ -48,33 +76,48 @@ class Amo
 
     /**
      * @param string $url
-     * @param bool $isPost
      * @param array $data
+     * @param \DateTime|null $modifiedSince
+     * @param bool $ajax
      * @return mixed|null
      */
-    public static function cUrl($url, $isPost = false, $data = array())
+    public static function cUrl($url, $data = array(), $modifiedSince = null, $ajax = false)
     {
         if (self::$authorization) {
             if (stripos($url, 'unsorted') !== false) {
                 $url .= '?login=' . self::$userLogin . '&api_key=' . self::$userHash;
             }
+            $url = 'https://' . self::$domain . '.amocrm.ru/' . $url;
             $curl = curl_init();
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
-            curl_setopt($curl, CURLOPT_URL, 'https://' . self::$domain . '.amocrm.ru/' . $url);
+            curl_setopt($curl, CURLOPT_URL, $url);
             curl_setopt($curl, CURLOPT_HEADER, false);
-            if ($isPost) {
-                curl_setopt($curl, CURLOPT_CUSTOMREQUEST, 'POST');
-                curl_setopt($curl, CURLOPT_POSTFIELDS, json_encode($data));
-                curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
+            curl_setopt($curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
+            $headers = array();
+            if (!empty($data)) {
+                curl_setopt($curl, CURLOPT_POST, true);
+                if ($ajax) {
+                    $headers[] = 'X-Requested-With: XMLHttpRequest';
+                } else {
+                    $headers[] = 'Content-Type: application/json';
+                    $data = json_encode($data);
+                }
+                curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
             }
+            if (!empty($modifiedSince)) {
+                $headers[] = 'IF-MODIFIED-SINCE: ' . $modifiedSince->format(\DateTime::RFC1123);
+            }
+            curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
             curl_setopt($curl, CURLOPT_COOKIEFILE, dirname(__FILE__) . '/cookie.txt');
             curl_setopt($curl, CURLOPT_COOKIEJAR, dirname(__FILE__) . '/cookie.txt');
-            curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, 0);
-            curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+            curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
             $out = curl_exec($curl);
             curl_close($curl);
             $response = json_decode($out);
+            if ($ajax) {
+                return $response;
+            }
             if ($response)
                 return $response->response;
         }
@@ -82,38 +125,9 @@ class Amo
     }
 
     /**
-     * @param string $domain
-     * @param string $userLogin
-     * @param string $userHash
-     * @return bool
-     */
-    public static function authorization($domain, $userLogin, $userHash)
-    {
-        self::$domain = $domain;
-        self::$userLogin = $userLogin;
-        self::$userHash = $userHash;
-        self::$authorization = true;
-        $user = array(
-            'USER_LOGIN' => self::$userLogin,
-            'USER_HASH' => self::$userHash
-        );
-        $link = 'private/api/auth.php?type=json';
-        $res = self::cUrl($link, true, $user);
-        if (file_exists(__DIR__ . '/cookie.txt')) {
-            self::$authorization = $res->auth;
-            if (self::$authorization)
-                self::$info = new Info(self::loadInfo());
-        } else {
-            echo 'Недостаточно прав для создания файлов!';
-            self::$authorization = false;
-        }
-        return self::$authorization;
-    }
-
-    /**
      * @return boolean
      */
-    public static function isAuthorization()
+    public function isAuthorization()
     {
         return self::$authorization;
     }
@@ -121,10 +135,9 @@ class Amo
     /**
      * @return false|mixed
      */
-    private static function loadInfo()
+    private function loadInfo()
     {
-        $link = 'private/api/v2/json/accounts/current';
-        $res = Amo::cUrl($link);
+        $res = Amo::cUrl('private/api/v2/json/accounts/current');
         return $res->account;
     }
 
@@ -133,7 +146,7 @@ class Amo
      * @param $email
      * @return Contact[]|null
      */
-    public static function searchContact($phone, $email = null)
+    public function searchContact($phone, $email = null)
     {
         $link = 'private/api/v2/json/contacts/list?query=';
         $contacts = array();
@@ -169,10 +182,10 @@ class Amo
      * @param string $query
      * @return Lead[]|null
      */
-    public static function searchLead($query)
+    public function searchLead($query)
     {
-        $link = "private/api/v2/json/leads/list?query=$query";
-        $res = Amo::cUrl($link);
+        $res = Amo::cUrl("
+}private/api/v2/json/leads/list?query=$query");
         if (!empty($res)) {
             $leads = array();
             foreach ($res->leads as $stdClass) {
@@ -183,5 +196,205 @@ class Amo
             return $leads;
         }
         return null;
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    public function contactsList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    {
+        return $this->getList('Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    public function leadsList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    {
+        return $this->getList('Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    public function companyList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    {
+        return $this->getList('Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    public function tasksList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    {
+        return $this->getList('Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    public function notesContactList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    {
+        return $this->getList('Note-Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    public function notesLeadList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    {
+        return $this->getList('Note-Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    public function notesCompanyList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    {
+        return $this->getList('Note-Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    public function notesTaskList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    {
+        return $this->getList('Note-Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+    }
+
+    /**
+     * @param string $type
+     * @param string $query
+     * @param integer $limit
+     * @param integer $offset
+     * @param array $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @return Base[]|false|null
+     */
+    private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince = null)
+    {
+        switch ($type) {
+            case 'Contact':
+                $class = $type;
+                $typeForUrl = 'contacts';
+                $typeRes = $typeForUrl;
+                $typeForUrlType = 'contact';
+                break;
+            case 'Lead':
+                $class = $type;
+                $typeForUrl = 'leads';
+                $typeRes = $typeForUrl;
+                break;
+            case 'Company':
+                $class = $type;
+                $typeForUrl = 'company';
+                $typeRes = 'contacts';
+                $typeForUrlType = 'company';
+                break;
+            case 'Task':
+                $class = $type;
+                $typeForUrl = 'tasks';
+                $typeRes = $typeForUrl;
+                break;
+            case 'Note-Contact':
+                $class = 'Note';
+                $typeForUrl = 'notes';
+                $typeForUrlType = 'contact';
+                $typeRes = $typeForUrl;
+                break;
+            case 'Note-Lead':
+                $class = 'Note';
+                $typeForUrl = 'notes';
+                $typeForUrlType = 'lead';
+                $typeRes = $typeForUrl;
+                break;
+            case 'Note-Company':
+                $class = 'Note';
+                $typeForUrl = 'notes';
+                $typeForUrlType = 'company';
+                $typeRes = $typeForUrl;
+                break;
+            case 'Note-Task':
+                $class = 'Note';
+                $typeForUrl = 'notes';
+                $typeForUrlType = 'task';
+                $typeRes = $typeForUrl;
+                break;
+        }
+        if (isset($typeForUrl) && isset($typeRes) && isset($class)) {
+            $typeObj = "AmoCRM\\$class";
+            $url = "private/api/v2/json/$typeForUrl/list?limit_rows=$limit&limit_offset=$offset";
+            if (!empty($query)) {
+                $url .= "&query=$query";
+            }
+            if (!empty($typeForUrlType)) {
+                $url .= "&type=$typeForUrlType";
+            }
+            if (!empty($responsibleUsersIdOrName)) {
+                if (is_array($responsibleUsersIdOrName)) {
+                    foreach ($responsibleUsersIdOrName as $responsibleUserIdOrName) {
+                        $responsibleUserId = Amo::$info->getUserIdFromIdOrName($responsibleUserIdOrName);
+                        $url .= "&responsible_user_id[]=$responsibleUserId";
+                    }
+                } else {
+                    $responsibleUserId = Amo::$info->getUserIdFromIdOrName($responsibleUsersIdOrName);
+                    $url .= "&responsible_user_id=$responsibleUserId";
+                }
+            }
+            $res = Amo::cUrl($url, null, $modifiedSince);
+            if ($res === null) {
+                return null;
+            } else {
+                $baseObjects = array();
+                foreach ($res->$typeRes as $baseRaw) {
+                    /** @var Base $baseObj */
+                    $baseObj = new $typeObj();
+                    $baseObj->loadInStdClass($baseRaw);
+                    $baseObjects[] = $baseObj;
+                }
+                return $baseObjects;
+            }
+        }
+        return false;
     }
 }

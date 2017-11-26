@@ -117,16 +117,16 @@ abstract class Base
         $type = $typeObj != 'Company' ? mb_strtolower(self::getTypeObj()) . 's' : 'contacts';
         $requestData['request'][$type][$method] = array($this->getRawBase($data));
         if ($typeObj == 'Company') {
-            $res = Amo::cUrl("private/api/v2/json/company/set", true, $requestData);
+            $res = Amo::cUrl("private/api/v2/json/company/set", $requestData);
         } else {
-            $res = Amo::cUrl("private/api/v2/json/$type/set", true, $requestData);
+            $res = Amo::cUrl("private/api/v2/json/$type/set", $requestData);
         }
         if ($method == 'update') {
             $idRes = $res->{$type}->update[0]->id;
             if ($idRes == $this->id)
                 return true;
         } elseif ($method == 'add') {
-            if ($this->loadInId($res->{$type}->add[0]->id))
+            if (isset($res->{$type}->add[0]->id) && $this->loadInId($res->{$type}->add[0]->id))
                 return true;
         }
         return false;
@@ -138,21 +138,23 @@ abstract class Base
      */
     protected function loadInId($id)
     {
-        $type = mb_strtolower(self::getTypeObj());
-        if ($type != 'company')
-            $type .= 's';
-        $link = "private/api/v2/json/$type/list?id=$id";
-        if ($type == 'notes') {
-            $note = $this;
-            /** @var Note $note */
-            $link .= "&type={$note->getElementTypeName()}";
-        }
-        $res = Amo::cUrl($link);
-        if ($type == 'company')
-            $type = 'contacts';
-        if ($res) {
-            $this->loadInStdClass($res->{$type}[0]);
-            return true;
+        if (!empty($id)) {
+            $type = mb_strtolower(self::getTypeObj());
+            if ($type != 'company')
+                $type .= 's';
+            $link = "private/api/v2/json/$type/list?id=$id";
+            if ($type == 'notes') {
+                $note = $this;
+                /** @var Note $note */
+                $link .= "&type={$note->getElementTypeName()}";
+            }
+            $res = Amo::cUrl($link);
+            if ($type == 'company')
+                $type = 'contacts';
+            if ($res) {
+                $this->loadInStdClass($res->{$type}[0]);
+                return true;
+            }
         }
         return false;
     }
@@ -163,7 +165,8 @@ abstract class Base
     public function loadInStdClass($stdClass)
     {
         $this->id = (int)$stdClass->id;
-        $this->name = $stdClass->name;
+        if (isset($stdClass->name))
+            $this->name = $stdClass->name;
         $this->createdUserId = (int)$stdClass->created_user_id;
         $dateCreate = new \DateTime();
         $dateCreate->setTimestamp($stdClass->date_create);
@@ -178,12 +181,12 @@ abstract class Base
             $this->linkedCompanyId = (int)$stdClass->linked_company_id;
         if (isset($stdClass->linked_leads_id))
             $this->linkedLeadsId = $stdClass->linked_leads_id;
-        if (is_array($stdClass->tags)) {
+        if (isset($stdClass->name) && is_array($stdClass->tags)) {
             foreach ($stdClass->tags as $tag) {
                 $this->tags[$tag->id] = $tag->name;
             }
         }
-        if (is_array($stdClass->custom_fields)) {
+        if (isset($stdClass->custom_fields) && is_array($stdClass->custom_fields)) {
             foreach ($stdClass->custom_fields as $custom_field) {
                 $customField = CustomField::loadInStdClass($custom_field);
                 if ($customField->getCode() == 'PHONE') {
@@ -195,6 +198,26 @@ abstract class Base
                 }
             }
         }
+    }
+
+    /**
+     * @return bool
+     */
+    public function delete()
+    {
+        $type = mb_strtolower(self::getTypeObj());
+        if ($type != 'company')
+            $type .= 's';
+        else {
+            $type = 'companies';
+        }
+        $post = array('ACTION' => 'DELETE', 'ID[]' => $this->id);
+        $url = "ajax/$type/multiple/delete/";
+        $res = Amo::cUrl($url, http_build_query($post), null, true);
+        if ($res->status == 'success') {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -252,19 +275,11 @@ abstract class Base
      */
     public function setResponsibleUser($responsibleUserIdOrName)
     {
-        $idUsers = Amo::$info->get('usersIdAndName');
-        if (array_key_exists($responsibleUserIdOrName, $idUsers)) {
-            $this->responsibleUserId = $responsibleUserIdOrName;
-            return true;
-        } else {
-            foreach ($idUsers as $key => $name) {
-                if (stripos($name, $responsibleUserIdOrName) !== false) {
-                    $this->responsibleUserId = $key;
-                    return true;
-                }
-            }
+        $this->responsibleUserId = Amo::$info->getUserIdFromIdOrName($responsibleUserIdOrName);
+        if (empty($this->responsibleUserId)) {
+            return false;
         }
-        return false;
+        return true;
     }
 
     /**
@@ -329,8 +344,7 @@ abstract class Base
                 "origin" => 'AmoCRM Wrap'
             )
         );
-        $link = 'private/api/v2/json/fields/set';
-        $res = Amo::cUrl($link, true, $data);
+        $res = Amo::cUrl('private/api/v2/json/fields/set', $data);
         if ($res)
             return $res->fields->add[0]->id;
         return false;
@@ -351,8 +365,7 @@ abstract class Base
                 "origin" => 'AmoCRM Wrap'
             )
         );
-        $link = 'private/api/v2/json/fields/set';
-        $res = Amo::cUrl($link, true, $data);
+        $res = Amo::cUrl('private/api/v2/json/fields/set', $data);
         if ($res)
             return $res->fields->delete[0]->id == $id;
         return false;
@@ -734,10 +747,11 @@ abstract class Base
         $note->setType($type);
         $note->setElementId($this->id);
         $typeObj = mb_strtolower(self::getTypeObj());
-        if (in_array($typeObj, Amo::$info->get('elementType')))
+        if (in_array($typeObj, Amo::$info->get('elementType'))) {
             $note->setElementType(array_search($typeObj, Amo::$info->get('elementType')));
-        else
+        } else {
             return false;
+        }
         return $note->save();
     }
 
@@ -763,11 +777,56 @@ abstract class Base
         $task->setResponsibleUser($responsibleUserIdOrName);
         $task->setElementId($this->id);
         $typeObj = mb_strtolower(self::getTypeObj());
-        if (in_array($typeObj, Amo::$info->get('elementType')))
-            $task->setElementType(array_search($typeObj, Amo::$info->get('elementType')));
-        else
+        $elementType = array_search($typeObj, Amo::$info->get('elementType'));
+        if ($elementType !== false) {
+            $task->setElementType($elementType);
+        } else {
             return false;
+        }
         $task->save();
         return true;
+    }
+
+    /**
+     * @param string $pathToFile
+     * @return bool
+     */
+    public function addFile($pathToFile)
+    {
+        if (is_file($pathToFile) && file_exists($pathToFile)) {
+            $typeObj = mb_strtolower(self::getTypeObj());
+            $elementType = array_search($typeObj, Amo::$info->get('elementType'));
+            if ($elementType == false) {
+                return false;
+            }
+            if (class_exists('CURLFile')) {
+                $cfile = new \CURLFile(realpath($pathToFile));
+                $post = array(
+                    'UserFile' => $cfile
+                );
+            } else {
+                $post = array(
+                    'UserFile' => "@" . $pathToFile
+                );
+            }
+            $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID=" . $this->id . "&ELEMENT_TYPE=" . $elementType . "&fileapi" . str_replace(".", "", microtime(true));
+            $res = Amo::cUrl($url, $post, null, true);
+            if (isset($res->status) && $res->status == 'fail') {
+                return false;
+            }
+            $post = array(
+                'ACTION' => "ADD_NOTE",
+                'DATE_CREATE' => time(),
+                'ATTACH' => $res->note->params->link,
+                'BODY' => $res->note->params->text,
+                'ELEMENT_ID' => $this->id,
+                'ELEMENT_TYPE' => $elementType,
+            );
+            $res = Amo::cUrl("private/notes/edit2.php", $post, null, true);
+            if (isset($res->status) && $res->status == 'ok') {
+                return true;
+            }
+        }
+        return false;
     }
 }
