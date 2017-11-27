@@ -42,7 +42,6 @@ class Lead extends Base
         $this->pipelineId = (int)$stdClass->pipeline_id;
         $this->statusId = (int)$stdClass->status_id;
         $this->mainContactId = (int)$stdClass->main_contact_id;
-        $this->customFields = array();
     }
 
     /**
