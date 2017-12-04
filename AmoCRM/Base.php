@@ -380,10 +380,13 @@ abstract class Base
     {
         $id = CustomField::getIdFromNameOrId(self::getTypeObj(), $nameOrId);
         $values = array();
-        foreach ($this->customFields[$id]->getValues() as $value) {
-            $values[] = $value->getValue();
+        if (array_key_exists($id, $this->customFields)) {
+            foreach ($this->customFields[$id]->getValues() as $value) {
+                $values[] = $value->getValue();
+            }
+            return implode('; ', $values);
         }
-        return implode('; ', $values);
+        return null;
     }
 
     /**
