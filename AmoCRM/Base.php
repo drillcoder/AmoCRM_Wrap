@@ -18,9 +18,19 @@ use AmoCRM\Helpers\Value;
 abstract class Base
 {
     /**
+     * @var string[]
+     */
+    protected $objType = array(
+        'elementType' => 0,
+        'info' => null,
+        'url' => null,
+        'request' => null,
+        'delete' => null,
+    );
+    /**
      * @var int
      */
-    protected $id;
+    protected $amoId;
     /**
      * @var string
      */
@@ -64,11 +74,11 @@ abstract class Base
     /**
      * @var string[]
      */
-    protected $tags;
+    protected $tags = array();
     /**
      * @var CustomField[]
      */
-    protected $customFields;
+    protected $customFields = array();
     /**
      * @var int|string
      */
@@ -92,15 +102,34 @@ abstract class Base
      */
     public function __construct($id = null)
     {
-        $this->customFields = array();
-        $this->tags = array();
-        $this->phones = new CustomField(Amo::$info->get('phoneFieldId'));
-        $this->emails = new CustomField(Amo::$info->get('emailFieldId'));
-        $id = (int)$id;
-        if (!empty($id)) {
-            $this->loadInId($id);
+        $this->setObjType();
+        if (Amo::$authorization) {
+            $this->phones = new CustomField(Amo::$info->get('phoneFieldId'));
+            $this->emails = new CustomField(Amo::$info->get('emailFieldId'));
+            if (!empty($id)) {
+                $id = (int)$id;
+                $this->loadInAmoId($id);
+            }
+        } else {
+            $this->phones = new CustomField();
+            $this->emails = new CustomField();
         }
     }
+
+    /**
+     * @return void
+     */
+    protected abstract function setObjType();
+
+    /**
+     * @return bool
+     */
+    public abstract function save();
+
+    /**
+     * @return bool
+     */
+    public abstract function getRaw();
 
     /**
      * @param array $data
@@ -108,26 +137,26 @@ abstract class Base
      */
     public function saveBase($data = array())
     {
-        if (empty($this->id)) {
-            $method = 'add';
+        if (Amo::$authorization) {
+            if (empty($this->amoId)) {
+                $method = 'add';
+            } else {
+                $method = 'update';
+            }
+            $typeRequest = $this->objType['request'];
+            $requestData['request'][$typeRequest][$method] = array($this->getRawBase($data));
+            $typeUrl = $this->objType['url'];
+            $res = Amo::cUrl("private/api/v2/json/$typeUrl/set", $requestData);
+            if ($method == 'update') {
+                $idRes = $res->{$typeRequest}->update[0]->id;
+                if ($idRes == $this->amoId)
+                    return true;
+            } elseif ($method == 'add') {
+                if (isset($res->{$typeRequest}->add[0]->id) && $this->loadInAmoId($res->{$typeRequest}->add[0]->id))
+                    return true;
+            }
         } else {
-            $method = 'update';
-        }
-        $typeObj = self::getTypeObj();
-        $type = $typeObj != 'Company' ? mb_strtolower(self::getTypeObj()) . 's' : 'contacts';
-        $requestData['request'][$type][$method] = array($this->getRawBase($data));
-        if ($typeObj == 'Company') {
-            $res = Amo::cUrl("private/api/v2/json/company/set", $requestData);
-        } else {
-            $res = Amo::cUrl("private/api/v2/json/$type/set", $requestData);
-        }
-        if ($method == 'update') {
-            $idRes = $res->{$type}->update[0]->id;
-            if ($idRes == $this->id)
-                return true;
-        } elseif ($method == 'add') {
-            if (isset($res->{$type}->add[0]->id) && $this->loadInId($res->{$type}->add[0]->id))
-                return true;
+            echo 'Необходима авторизация в ЦРМ';
         }
         return false;
     }
@@ -136,23 +165,20 @@ abstract class Base
      * @param int $id
      * @return bool
      */
-    protected function loadInId($id)
+    protected function loadInAmoId($id)
     {
         if (!empty($id)) {
-            $type = mb_strtolower(self::getTypeObj());
-            if ($type != 'company')
-                $type .= 's';
-            $link = "private/api/v2/json/$type/list?id=$id";
-            if ($type == 'notes') {
-                $note = $this;
-                /** @var Note $note */
-                $link .= "&type={$note->getElementTypeName()}";
+            $typeUrl = $this->objType['url'];
+            $elementType = $this->objType['elementType'];
+            $typeInfo = $this->objType['info'];
+            $typeRequest = $this->objType['request'];
+            $link = "private/api/v2/json/$typeUrl/list?id=$id";
+            if ($typeInfo == 'Note') {
+                $link .= "&type=$elementType";
             }
             $res = Amo::cUrl($link);
-            if ($type == 'company')
-                $type = 'contacts';
             if ($res) {
-                $this->loadInStdClass($res->{$type}[0]);
+                $this->loadInStdClass($res->{$typeRequest}[0]);
                 return true;
             }
         }
@@ -164,7 +190,7 @@ abstract class Base
      */
     public function loadInStdClass($stdClass)
     {
-        $this->id = (int)$stdClass->id;
+        $this->amoId = (int)$stdClass->id;
         if (isset($stdClass->name))
             $this->name = $stdClass->name;
         $this->createdUserId = (int)$stdClass->created_user_id;
@@ -205,14 +231,9 @@ abstract class Base
      */
     public function delete()
     {
-        $type = mb_strtolower(self::getTypeObj());
-        if ($type != 'company')
-            $type .= 's';
-        else {
-            $type = 'companies';
-        }
-        $post = array('ACTION' => 'DELETE', 'ID[]' => $this->id);
-        $url = "ajax/$type/multiple/delete/";
+        $typeDelete = $this->objType['delete'];
+        $post = array('ACTION' => 'DELETE', 'ID[]' => $this->amoId);
+        $url = "ajax/$typeDelete/multiple/delete/";
         $res = Amo::cUrl($url, http_build_query($post), null, true);
         if ($res->status == 'success') {
             return true;
@@ -221,20 +242,11 @@ abstract class Base
     }
 
     /**
-     * @return string
+     * @return int|null
      */
-    private function getTypeObj()
+    public function getAmoId()
     {
-        $type = explode('\\', get_class($this));
-        return $type[count($type) - 1];
-    }
-
-    /**
-     * @return int
-     */
-    public function getId()
-    {
-        return $this->id;
+        return $this->amoId;
     }
 
     /**
@@ -335,7 +347,7 @@ abstract class Base
      */
     public function addCustomField($name, $type)
     {
-        $elementType = array_search(mb_strtolower(self::getTypeObj()), Amo::$info->get('elementType'));
+        $elementType = $this->objType['elementType'];
         $data['request']['fields']['add'] = array(
             array(
                 "name" => $name,
@@ -356,7 +368,7 @@ abstract class Base
      */
     public function delCustomField($nameOrId)
     {
-        $id = CustomField::getIdFromNameOrId(self::getTypeObj(), $nameOrId);
+        $id = CustomField::getIdFromNameOrId($this->objType['info'], $nameOrId);
         if (empty($id))
             return false;
         $data['request']['fields']['delete'] = array(
@@ -378,7 +390,7 @@ abstract class Base
      */
     public function getCustomField($nameOrId)
     {
-        $id = CustomField::getIdFromNameOrId(self::getTypeObj(), $nameOrId);
+        $id = CustomField::getIdFromNameOrId($this->objType['info'], $nameOrId);
         $values = array();
         if (array_key_exists($id, $this->customFields)) {
             foreach ($this->customFields[$id]->getValues() as $value) {
@@ -394,7 +406,7 @@ abstract class Base
      */
     public function getCustomFields()
     {
-        $type = self::getTypeObj();
+        $type = $this->objType['info'];
         $idCustomFields = Amo::$info->get("id{$type}CustomFields");
         $customFields = array();
         foreach ($this->customFields as $customField) {
@@ -415,7 +427,7 @@ abstract class Base
      */
     public function setCustomField($customFieldNameOrId, $values = null)
     {
-        $type = self::getTypeObj();
+        $type = $this->objType['info'];
         $idCustomFields = Amo::$info->get("id{$type}CustomFields");
         if (array_key_exists($customFieldNameOrId, $idCustomFields)) {
             $customFieldId = $customFieldNameOrId;
@@ -469,16 +481,6 @@ abstract class Base
     public function getElementType()
     {
         return $this->elementType;
-    }
-
-    /**
-     * @return bool|string
-     */
-    private function getElementTypeName()
-    {
-        if (array_key_exists($this->elementType, Amo::$info->get('elementType')))
-            return Amo::$info->get('elementType')[$this->elementType];
-        return false;
     }
 
     /**
@@ -619,13 +621,22 @@ abstract class Base
     public function addPhone($phone, $enum = 'OTHER')
     {
         $enum = mb_strtoupper($enum);
-        $idPhoneEnums = Amo::$info->get('idPhoneEnums');
-        if (array_key_exists($enum, $idPhoneEnums)) {
+        if (!empty(Amo::$info)) {
+            $idPhoneEnums = Amo::$info->get('idPhoneEnums');
+            if (array_key_exists($enum, $idPhoneEnums)) {
+                foreach ($this->phones->getValues() as $value) {
+                    if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone))
+                        return true;
+                }
+                $this->phones->addValue(new Value($phone, $idPhoneEnums[$enum]));
+                return true;
+            }
+        } else {
             foreach ($this->phones->getValues() as $value) {
                 if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone))
                     return true;
             }
-            $this->phones->addValue(new Value($phone, $idPhoneEnums[$enum]));
+            $this->phones->addValue(new Value($phone));
             return true;
         }
         return false;
@@ -666,13 +677,22 @@ abstract class Base
     public function addEmail($email, $enum = 'OTHER')
     {
         $enum = mb_strtoupper($enum);
-        $idEmailEnums = Amo::$info->get('idEmailEnums');
-        if (array_key_exists($enum, $idEmailEnums)) {
+        if (!empty(Amo::$info)) {
+            $idEmailEnums = Amo::$info->get('idEmailEnums');
+            if (array_key_exists($enum, $idEmailEnums)) {
+                foreach ($this->emails->getValues() as $value) {
+                    if ($value->getValue() == $email)
+                        return true;
+                }
+                $this->emails->addValue(new Value($email, $idEmailEnums[$enum]));
+                return true;
+            }
+        } else {
             foreach ($this->emails->getValues() as $value) {
                 if ($value->getValue() == $email)
                     return true;
             }
-            $this->emails->addValue(new Value($email, $idEmailEnums[$enum]));
+            $this->emails->addValue(new Value($email));
             return true;
         }
         return false;
@@ -705,11 +725,11 @@ abstract class Base
             'linked_company_id' => $this->linkedCompanyId,
             'linked_leads_id' => $this->linkedLeadsId,
         ));
-        if (empty($this->id)) {
+        if (empty($this->amoId)) {
             $data['created_user_id'] = 0;
 
         } else {
-            $data['id'] = $this->id;
+            $data['id'] = $this->amoId;
             $data['last_modified'] = date('U');
             $data['modified_user_id'] = 0;
         }
@@ -748,13 +768,8 @@ abstract class Base
         $note = new Note();
         $note->setText($text);
         $note->setType($type);
-        $note->setElementId($this->id);
-        $typeObj = mb_strtolower(self::getTypeObj());
-        if (in_array($typeObj, Amo::$info->get('elementType'))) {
-            $note->setElementType(array_search($typeObj, Amo::$info->get('elementType')));
-        } else {
-            return false;
-        }
+        $note->setElementId($this->amoId);
+        $note->setElementType($this->objType['elementType']);
         return $note->save();
     }
 
@@ -778,14 +793,9 @@ abstract class Base
             $typeId = array_search($typeId, $types);
         $task->setType($typeId);
         $task->setResponsibleUser($responsibleUserIdOrName);
-        $task->setElementId($this->id);
-        $typeObj = mb_strtolower(self::getTypeObj());
-        $elementType = array_search($typeObj, Amo::$info->get('elementType'));
-        if ($elementType !== false) {
-            $task->setElementType($elementType);
-        } else {
-            return false;
-        }
+        $task->setElementId($this->amoId);
+
+        $task->setElementType($this->objType['elementType']);
         $task->save();
         return true;
     }
@@ -797,11 +807,7 @@ abstract class Base
     public function addFile($pathToFile)
     {
         if (is_file($pathToFile) && file_exists($pathToFile)) {
-            $typeObj = mb_strtolower(self::getTypeObj());
-            $elementType = array_search($typeObj, Amo::$info->get('elementType'));
-            if ($elementType == false) {
-                return false;
-            }
+            $elementType = $this->objType['elementType'];
             if (class_exists('CURLFile')) {
                 $cfile = new \CURLFile(realpath($pathToFile));
                 $post = array(
@@ -812,7 +818,7 @@ abstract class Base
                     'UserFile' => "@" . $pathToFile
                 );
             }
-            $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID=" . $this->id . "&ELEMENT_TYPE=" . $elementType . "&fileapi" . str_replace(".", "", microtime(true));
+            $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID=" . $this->amoId . "&ELEMENT_TYPE=" . $elementType . "&fileapi" . str_replace(".", "", microtime(true));
             $res = Amo::cUrl($url, $post, null, true);
             if (isset($res->status) && $res->status == 'fail') {
                 return false;
@@ -822,7 +828,7 @@ abstract class Base
                 'DATE_CREATE' => time(),
                 'ATTACH' => $res->note->params->link,
                 'BODY' => $res->note->params->text,
-                'ELEMENT_ID' => $this->id,
+                'ELEMENT_ID' => $this->amoId,
                 'ELEMENT_TYPE' => $elementType,
             );
             $res = Amo::cUrl("private/notes/edit2.php", $post, null, true);

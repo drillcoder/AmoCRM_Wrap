@@ -14,7 +14,6 @@ namespace AmoCRM;
  */
 class Note extends Base
 {
-
     /**
      * @var bool
      */
@@ -23,6 +22,28 @@ class Note extends Base
      * @var string
      */
     private $attachment;
+
+    /**
+     * @return void
+     */
+    protected function setObjType()
+    {
+        $this->objType = array(
+            'elementType' => null,
+            'info' => null,
+            'url' => 'notes',
+            'request' => 'notes',
+            'delete' => 'notes',
+        );
+    }
+
+    /**
+     * @return array
+     */
+    public function getRaw()
+    {
+        return Base::getRawBase();
+    }
 
     /**
      * @return bool

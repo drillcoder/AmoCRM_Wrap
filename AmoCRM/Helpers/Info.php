@@ -25,39 +25,43 @@ class Info
     /**
      * @var array
      */
-    private $idPhoneEnums;
+    private $idPhoneEnums = array();
     /**
      * @var array
      */
-    private $idEmailEnums;
+    private $idEmailEnums = array();
     /**
      * @var array
      */
-    private $usersIdAndName;
+    private $usersIdAndName = array();
     /**
      * @var array
      */
-    private $idContactCustomFields;
+    private $idContactCustomFields = array();
     /**
      * @var array
      */
-    private $idContactCustomFieldsEnums;
+    private $idContactCustomFieldsEnums = array();
     /**
      * @var array
      */
-    private $idLeadCustomFields;
+    private $idLeadCustomFields = array();
     /**
      * @var array
      */
-    private $idLeadCustomFieldsEnums;
+    private $idLeadCustomFieldsEnums = array();
+    /**
+     * @var array
+     */
+    private $idCompanyCustomFields = array();
+    /**
+     * @var array
+     */
+    private $idCompanyCustomFieldsEnums = array();
     /**
      * @var array
      */
     private $pipelines;
-    /**
-     * @var array
-     */
-    private $elementType;
     /**
      * @var array
      */
@@ -69,17 +73,7 @@ class Info
      */
     public function __construct($info)
     {
-//        echo '<pre>';
-//        var_dump($info);
-//        echo '</pre>';
-//        die;
-        $this->elementType = array(
-            1 => 'contact',
-            2 => 'lead',
-            3 => 'company',
-            4 => 'task',
-        );
-        $this->idContactCustomFieldsEnums = array();
+        $this->idContactCustomFieldsEnums;
         foreach ($info->custom_fields->contacts as $field) {
             $this->idContactCustomFields[$field->id] = $field->name;
             if ($field->code == 'PHONE') {
@@ -94,11 +88,16 @@ class Info
                 $this->idContactCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
             }
         }
-        $this->idLeadCustomFieldsEnums = array();
         foreach ($info->custom_fields->leads as $field) {
             $this->idLeadCustomFields[$field->id] = $field->name;
             if ($field->type_id == 5) {
                 $this->idLeadCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
+            }
+        }
+        foreach ($info->custom_fields->companies as $field) {
+            $this->idCompanyCustomFields[$field->id] = $field->name;
+            if ($field->type_id == 5) {
+                $this->idCompanyCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
             }
         }
         foreach ($info->users as $user) {

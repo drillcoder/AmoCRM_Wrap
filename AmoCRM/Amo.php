@@ -17,6 +17,10 @@ use AmoCRM\Helpers\Info;
 class Amo
 {
     /**
+     * Version Wrap
+     */
+    const VERSION = '4.2';
+    /**
      * @var string
      */
     private static $domain;
@@ -31,7 +35,7 @@ class Amo
     /**
      * @var bool
      */
-    private static $authorization;
+    public static $authorization;
     /**
      * @var Info
      */
@@ -158,7 +162,7 @@ class Amo
                 foreach ($res->contacts as $stdClass) {
                     $contact = new Contact();
                     $contact->loadInStdClass($stdClass);
-                    $contacts[$contact->getId()] = $contact;
+                    $contacts[$contact->getAmoId()] = $contact;
                 }
             }
         }
@@ -169,7 +173,7 @@ class Amo
                 foreach ($res->contacts as $stdClass) {
                     $contact = new Contact();
                     $contact->loadInStdClass($stdClass);
-                    $contacts[$contact->getId()] = $contact;
+                    $contacts[$contact->getAmoId()] = $contact;
                 }
             }
         }
@@ -191,7 +195,7 @@ class Amo
             foreach ($res->leads as $stdClass) {
                 $lead = new Lead();
                 $lead->loadInStdClass($stdClass);
-                $leads[$lead->getId()] = $lead;
+                $leads[$lead->getAmoId()] = $lead;
             }
             return $leads;
         }
@@ -204,11 +208,12 @@ class Amo
      * @param int $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    public function contactsList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    public function contactsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
-        return $this->getList('Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+        return $this->getList('Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -217,11 +222,12 @@ class Amo
      * @param int $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    public function leadsList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    public function leadsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
-        return $this->getList('Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+        return $this->getList('Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -230,11 +236,12 @@ class Amo
      * @param int $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    public function companyList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    public function companyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
-        return $this->getList('Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+        return $this->getList('Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -243,11 +250,12 @@ class Amo
      * @param int $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    public function tasksList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    public function tasksList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
-        return $this->getList('Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+        return $this->getList('Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -256,11 +264,12 @@ class Amo
      * @param int $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    public function notesContactList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    public function notesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
-        return $this->getList('Note-Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+        return $this->getList('Note-Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -269,11 +278,12 @@ class Amo
      * @param int $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    public function notesLeadList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    public function notesLeadList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
-        return $this->getList('Note-Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+        return $this->getList('Note-Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -282,11 +292,12 @@ class Amo
      * @param int $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    public function notesCompanyList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    public function notesCompanyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
-        return $this->getList('Note-Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+        return $this->getList('Note-Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -295,11 +306,12 @@ class Amo
      * @param int $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    public function notesTaskList($query = null, $limit = 500, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null)
+    public function notesTaskList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
-        return $this->getList('Note-Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince);
+        return $this->getList('Note-Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -309,10 +321,13 @@ class Amo
      * @param integer $offset
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
      * @return Base[]|false|null
      */
-    private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince = null)
+    private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince = null, $isRaw = false)
     {
+        $offset = (int)$offset;
+        $limit = (int)$limit;
         switch ($type) {
             case 'Contact':
                 $class = $type;
@@ -363,7 +378,7 @@ class Amo
         }
         if (isset($typeForUrl) && isset($typeRes) && isset($class)) {
             $typeObj = "AmoCRM\\$class";
-            $url = "private/api/v2/json/$typeForUrl/list?limit_rows=$limit&limit_offset=$offset";
+            $url = "private/api/v2/json/$typeForUrl/list?";
             if (!empty($query)) {
                 $url .= "&query=$query";
             }
@@ -381,18 +396,48 @@ class Amo
                     $url .= "&responsible_user_id=$responsibleUserId";
                 }
             }
-            $res = Amo::cUrl($url, null, $modifiedSince);
-            if ($res === null) {
+            $totalCount = $limit;
+            $isNext = true;
+            $result = array();
+            $i = 0;
+            while ($isNext) {
+                $i++;
+                if ($i > 15)
+                    break;
+                if ($totalCount > 500 || $limit == 0) {
+                    $requestLimit = 500;
+                } else {
+                    $requestLimit = $totalCount;
+                }
+                $res = Amo::cUrl($url . "&limit_rows=$requestLimit&limit_offset=$offset", null, $modifiedSince);
+                if ($res === null) {
+                    break;
+                } else {
+                    $result = array_merge($result, $res->$typeRes);
+                    if ($limit != 0) {
+                        $totalCount -= count($res->$typeRes);
+                        if ($totalCount <= 0) {
+                            break;
+                        }
+                    }
+                    $offset += 500;
+                }
+            }
+            if (empty($result)) {
                 return null;
             } else {
-                $baseObjects = array();
-                foreach ($res->$typeRes as $baseRaw) {
-                    /** @var Base $baseObj */
-                    $baseObj = new $typeObj();
-                    $baseObj->loadInStdClass($baseRaw);
-                    $baseObjects[] = $baseObj;
+                if ($isRaw) {
+                    return $result;
+                } else {
+                    $baseObjects = array();
+                    foreach ($result as $baseRaw) {
+                        /** @var Base $baseObj */
+                        $baseObj = new $typeObj();
+                        $baseObj->loadInStdClass($baseRaw);
+                        $baseObjects[] = $baseObj;
+                    }
+                    return $baseObjects;
                 }
-                return $baseObjects;
             }
         }
         return false;

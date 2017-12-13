@@ -24,6 +24,28 @@ class Task extends Base
     private $completeTill;
 
     /**
+     * @return void
+     */
+    protected function setObjType()
+    {
+        $this->objType = array(
+            'elementType' => 4,
+            'info' => null,
+            'url' => 'tasks',
+            'request' => 'tasks',
+            'delete' => 'tasks',
+        );
+    }
+
+    /**
+     * @return array
+     */
+    public function getRaw()
+    {
+        return Base::getRawBase();
+    }
+
+    /**
      * @return bool
      */
     public function save()

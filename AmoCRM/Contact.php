@@ -15,6 +15,20 @@ namespace AmoCRM;
 class Contact extends Base
 {
     /**
+     * @return void
+     */
+    protected function setObjType()
+    {
+        $this->objType = array(
+            'elementType' => 1,
+            'info' => 'Contact',
+            'url' => 'contacts',
+            'request' => 'contacts',
+            'delete' => 'contacts',
+        );
+    }
+
+    /**
      * @return bool
      */
     public function save()
@@ -51,7 +65,7 @@ class Contact extends Base
      */
     public function addNote($text, $type = 4)
     {
-        if (empty($this->id))
+        if (empty($this->amoId))
             $this->save();
         return parent::addNote($text, $type);
     }
@@ -65,7 +79,7 @@ class Contact extends Base
      */
     public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
     {
-        if (empty($this->id))
+        if (empty($this->amoId))
             $this->save();
         return parent::addTask($text, $responsibleUserIdOrName, $completeTill, $typeId);
     }
@@ -76,7 +90,7 @@ class Contact extends Base
      */
     public function addFile($pathToFile)
     {
-        if (empty($this->id))
+        if (empty($this->amoId))
             $this->save();
         return parent::addFile($pathToFile);
     }

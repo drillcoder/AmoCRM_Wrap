@@ -39,7 +39,7 @@ class CustomField
      * @param string|null $name
      * @param string|null $code
      */
-    public function __construct($id, array $values = array(), $name = null, $code = null)
+    public function __construct($id = 0, array $values = array(), $name = null, $code = null)
     {
         $this->id = (int)$id;
         $this->name = $name;
