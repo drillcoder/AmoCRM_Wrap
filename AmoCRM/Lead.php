@@ -17,19 +17,19 @@ class Lead extends Base
     /**
      * @var int
      */
-    private $statusId;
+    protected $statusId;
     /**
      * @var int
      */
-    private $price;
+    protected $sale;
     /**
      * @var int
      */
-    private $pipelineId;
+    protected $pipelineId;
     /**
      * @var int
      */
-    private $mainContactId;
+    protected $mainContactId;
 
     /**
      * @return void
@@ -40,22 +40,22 @@ class Lead extends Base
             'elementType' => 2,
             'info' => 'Lead',
             'url' => 'leads',
-            'request' => 'leads',
             'delete' => 'leads',
         );
     }
 
     /**
      * @param \stdClass $stdClass
-     * @return Lead
      */
-    public function loadInStdClass($stdClass)
+    public function loadInRaw($stdClass)
     {
-        Base::loadInStdClass($stdClass);
-        $this->price = (int)$stdClass->price;
-        $this->pipelineId = (int)$stdClass->pipeline_id;
+        Base::loadInRaw($stdClass);
+        $this->sale = (int)$stdClass->sale;
+        $this->pipelineId = (int)$stdClass->pipeline->id;
         $this->statusId = (int)$stdClass->status_id;
-        $this->mainContactId = (int)$stdClass->main_contact_id;
+        if (isset($stdClass->main_contact->id)) {
+            $this->mainContactId = $stdClass->main_contact->id;
+        }
     }
 
     /**
@@ -64,9 +64,8 @@ class Lead extends Base
     public function save()
     {
         $data = array(
-            'main_contact_id' => $this->mainContactId,
             'pipeline_id' => $this->pipelineId,
-            'price' => $this->price,
+            'sale' => $this->sale,
             'status_id' => $this->statusId,
         );
         return Base::saveBase($data);
@@ -78,9 +77,9 @@ class Lead extends Base
     public function getRaw()
     {
         $data = array(
-            'main_contact_id' => $this->mainContactId,
+            'main_contact_id' => $this->contactsId,
             'pipeline_id' => $this->pipelineId,
-            'price' => $this->price,
+            'price' => $this->sale,
             'status_id' => $this->statusId,
         );
         return Base::getRawBase($data);
@@ -103,17 +102,17 @@ class Lead extends Base
     /**
      * @return int
      */
-    public function getPrice()
+    public function getSale()
     {
-        return $this->price;
+        return $this->sale;
     }
 
     /**
-     * @param int $price
+     * @param int $sale
      */
-    public function setPrice($price)
+    public function setSale($sale)
     {
-        $this->price = $price;
+        $this->sale = $sale;
     }
 
     /**
@@ -175,11 +174,11 @@ class Lead extends Base
     }
 
     /**
-     * @param int $mainContactId
+     * @param int $contactId
      */
-    public function setMainContactId($mainContactId)
+    public function setMainContactId($contactId)
     {
-        $this->mainContactId = $mainContactId;
+        $this->mainContactId = $contactId;
     }
 
     /**
@@ -199,8 +198,9 @@ class Lead extends Base
      */
     public function addNote($text, $type = 4)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addNote($text, $type);
     }
 
@@ -213,8 +213,9 @@ class Lead extends Base
      */
     public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addTask($text, $responsibleUserIdOrName, $completeTill, $typeId);
     }
 
@@ -224,8 +225,9 @@ class Lead extends Base
      */
     public function addFile($pathToFile)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addFile($pathToFile);
     }
 }

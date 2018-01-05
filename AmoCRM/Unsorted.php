@@ -17,27 +17,27 @@ class Unsorted
     /**
      * @var int
      */
-    private $id;
+    protected $id;
     /**
      * @var string
      */
-    private $formName;
+    protected $formName;
     /**
      * @var int
      */
-    private $pipelineId;
+    protected $pipelineId;
     /**
      * @var Contact[]|array
      */
-    private $contacts = array();
+    protected $contacts = array();
     /**
      * @var Lead|array
      */
-    private $lead = array();
+    protected $lead = array();
     /**
      * @var Company[]|array
      */
-    private $companies = array();
+    protected $companies = array();
 
     /**
      * Unsorted constructor.
@@ -111,38 +111,28 @@ class Unsorted
                 'value' => $emailFirstContact
             );
         }
-        $referer = null;
-        if (!empty($_SERVER['HTTP_REFERER'])) {
-            $referer = $_SERVER['HTTP_REFERER'];
-        }
-        $request['request']['unsorted'] = array(
-            'category' => 'forms',
-            'add' => array(
-                array(
-                    'source' => 'AmoCRM Wrap by Drill',
-                    'pipeline_id' => $this->pipelineId,
-                    'source_data' => array(
-                        'data' => $data,
-                        'form_id' => 25,
-                        'form_type' => 1,
-                        'origin' => array(
-                            'referer' => $referer,
-                        ),
-                        'date' => date('U'),
-                        'from' => $_SERVER['SERVER_NAME'],
-                        'form_name' => $this->formName,
-                    ),
-                    'data' => array(
-                        'contacts' => $contacts,
-                        'leads' => array($lead),
-                        'companies' => $companies,
-                    )
-                )
+        $request['add'] = array(
+            array(
+                'source_name' => 'AmoCRM Wrap by Drill',
+                'created_at' => date('U'),
+                'pipeline_id' => $this->pipelineId,
+                'incoming_entities' => array(
+                    'leads' => array($lead),
+                    'contacts' => $contacts,
+                    'companies' => $companies,
+                ),
+                'incoming_lead_info' => array(
+                    'form_id' => 25,
+                    'form_page' => $_SERVER['SERVER_NAME'],
+                    'ip' => $_SERVER['REMOTE_ADDR'],
+                    'form_name' => $this->formName,
+                    'referer' => !empty($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : null,
+                ),
             ),
         );
-        $response = Amo::cUrl('api/unsorted/add', $request);
-        if ($response->unsorted->add->status == 'success') {
-            $this->id = $response->unsorted->add->data[0];
+        $response = Amo::cUrl('api/v2/incoming_leads/form', $request);
+        if ($response->status == 'success') {
+            $this->id = $response->data[0];
             return true;
         }
         return false;

@@ -17,11 +17,11 @@ class Task extends Base
     /**
      * @var bool
      */
-    private $isComplete;
+    protected $isComplete;
     /**
      * @var \DateTime
      */
-    private $completeTill;
+    protected $completeTill;
 
     /**
      * @return void
@@ -32,7 +32,6 @@ class Task extends Base
             'elementType' => 4,
             'info' => null,
             'url' => 'tasks',
-            'request' => 'tasks',
             'delete' => 'tasks',
         );
     }
@@ -51,6 +50,8 @@ class Task extends Base
     public function save()
     {
         $data = array(
+            'complete_till_at' => $this->completeTill->format('U'),
+            'is_completed' => $this->isComplete,
             'element_id' => $this->elementId,
             'element_type' => $this->elementType,
             'task_type' => $this->type,
@@ -61,23 +62,22 @@ class Task extends Base
 
     /**
      * @param \stdClass $stdClass
-     * @return Lead
      */
-    public function loadInStdClass($stdClass)
+    public function loadInRaw($stdClass)
     {
-        Base::loadInStdClass($stdClass);
+        Base::loadInRaw($stdClass);
         $this->type = $stdClass->task_type;
         $this->elementId = (int)$stdClass->element_id;
         $this->elementType = (int)$stdClass->element_type;
         $this->text = $stdClass->text;
-        $this->isComplete = $stdClass->status == 1;
+        $this->isComplete = $stdClass->is_completed;
         $completeTill = new \DateTime();
-        $completeTill->setTimestamp($stdClass->complete_till);
+        $completeTill->setTimestamp($stdClass->complete_till_at);
         $this->completeTill = $completeTill;
     }
 
     /**
-     * @return boolean
+     * @return bool
      */
     public function isIsComplete()
     {
@@ -85,7 +85,7 @@ class Task extends Base
     }
 
     /**
-     * @param boolean $isComplete
+     * @param bool $isComplete
      */
     public function setIsComplete($isComplete)
     {

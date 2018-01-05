@@ -24,7 +24,6 @@ abstract class Base
         'elementType' => 0,
         'info' => null,
         'url' => null,
-        'request' => null,
         'delete' => null,
     );
     /**
@@ -36,13 +35,13 @@ abstract class Base
      */
     protected $name;
     /**
-     * @var CustomField
+     * @var Value[]
      */
-    protected $phones;
+    protected $phones = array();
     /**
-     * @var CustomField
+     * @var Value[]
      */
-    protected $emails;
+    protected $emails = array();
     /**
      * @var int
      */
@@ -54,11 +53,11 @@ abstract class Base
     /**
      * @var \DateTime
      */
-    protected $lastModified;
+    protected $dateUpdate;
     /**
      * @var int
      */
-    protected $modifiedUserId;
+    protected $userIdUpdate;
     /**
      * @var int
      */
@@ -66,11 +65,15 @@ abstract class Base
     /**
      * @var int
      */
-    protected $linkedCompanyId;
+    protected $companyId;
     /**
      * @var int[]
      */
-    protected $linkedLeadsId;
+    protected $leadsId = array();
+    /**
+     * @var int[]
+     */
+    protected $contactsId = array();
     /**
      * @var string[]
      */
@@ -95,24 +98,23 @@ abstract class Base
      * @var string
      */
     protected $text;
+    /**
+     * @var array
+     */
+    protected $unlink;
 
     /**
      * Base constructor.
-     * @param int|null $id
+     * @param int|null $amoId
      */
-    public function __construct($id = null)
+    public function __construct($amoId = null)
     {
         $this->setObjType();
         if (Amo::$authorization) {
-            $this->phones = new CustomField(Amo::$info->get('phoneFieldId'));
-            $this->emails = new CustomField(Amo::$info->get('emailFieldId'));
-            if (!empty($id)) {
-                $id = (int)$id;
-                $this->loadInAmoId($id);
+            if (!empty($amoId)) {
+                $amoId = (int)$amoId;
+                $this->loadInAmoId($amoId);
             }
-        } else {
-            $this->phones = new CustomField();
-            $this->emails = new CustomField();
         }
     }
 
@@ -143,17 +145,17 @@ abstract class Base
             } else {
                 $method = 'update';
             }
-            $typeRequest = $this->objType['request'];
-            $requestData['request'][$typeRequest][$method] = array($this->getRawBase($data));
+            $requestData[$method] = array($this->getRawBase($data));
             $typeUrl = $this->objType['url'];
-            $res = Amo::cUrl("private/api/v2/json/$typeUrl/set", $requestData);
+            $res = Amo::cUrl("api/v2/$typeUrl", $requestData);
             if ($method == 'update') {
-                $idRes = $res->{$typeRequest}->update[0]->id;
+                $idRes = $res->_embedded->items[0]->id;
                 if ($idRes == $this->amoId)
                     return true;
             } elseif ($method == 'add') {
-                if (isset($res->{$typeRequest}->add[0]->id) && $this->loadInAmoId($res->{$typeRequest}->add[0]->id))
+                if (isset($res->_embedded->items[0]->id) && $this->loadInAmoId($res->_embedded->items[0]->id)) {
                     return true;
+                }
             }
         } else {
             echo 'Необходима авторизация в ЦРМ';
@@ -169,16 +171,25 @@ abstract class Base
     {
         if (!empty($id)) {
             $typeUrl = $this->objType['url'];
-            $elementType = $this->objType['elementType'];
-            $typeInfo = $this->objType['info'];
-            $typeRequest = $this->objType['request'];
-            $link = "private/api/v2/json/$typeUrl/list?id=$id";
-            if ($typeInfo == 'Note') {
-                $link .= "&type=$elementType";
+            $link = "api/v2/$typeUrl?id=$id";
+            if ($this->objType['info'] == 'Note') {
+                $type = null;
+                switch ($this->elementType) {
+                    case 1:
+                        $type = 'contact';
+                        break;
+                    case 2:
+                        $type = 'lead';
+                        break;
+                    case 3:
+                        $type = 'company';
+                        break;
+                }
+                $link .= "&type=$type";
             }
             $res = Amo::cUrl($link);
             if ($res) {
-                $this->loadInStdClass($res->{$typeRequest}[0]);
+                $this->loadInRaw($res->_embedded->items[0]);
                 return true;
             }
         }
@@ -186,39 +197,46 @@ abstract class Base
     }
 
     /**
-     * @param \stdClass $stdClass
+     * @param \stdClass|array $stdClass
      */
-    public function loadInStdClass($stdClass)
+    public function loadInRaw($stdClass)
     {
+        $stdClass = json_decode(json_encode($stdClass));
         $this->amoId = (int)$stdClass->id;
         if (isset($stdClass->name))
             $this->name = $stdClass->name;
-        $this->createdUserId = (int)$stdClass->created_user_id;
+        $this->createdUserId = (int)$stdClass->created_by;
         $dateCreate = new \DateTime();
-        $dateCreate->setTimestamp($stdClass->date_create);
+        $dateCreate->setTimestamp($stdClass->created_at);
         $this->dateCreate = $dateCreate;
-        $lastModified = new \DateTime();
-        $lastModified->setTimestamp($stdClass->last_modified);
-        $this->lastModified = $lastModified;
-        if (isset($stdClass->modified_user_id))
-            $this->modifiedUserId = (int)$stdClass->modified_user_id;
+        $dateUpdate = new \DateTime();
+        $dateUpdate->setTimestamp($stdClass->updated_at);
+        $this->dateUpdate = $dateUpdate;
         $this->responsibleUserId = (int)$stdClass->responsible_user_id;
-        if (isset($stdClass->linked_company_id))
-            $this->linkedCompanyId = (int)$stdClass->linked_company_id;
-        if (isset($stdClass->linked_leads_id))
-            $this->linkedLeadsId = $stdClass->linked_leads_id;
-        if (isset($stdClass->name) && is_array($stdClass->tags)) {
+        if (isset($stdClass->updated_by)) {
+            $this->userIdUpdate = (int)$stdClass->updated_by;
+        }
+        if (isset($stdClass->company->id)) {
+            $this->companyId = (int)$stdClass->company->id;
+        }
+        if (isset($stdClass->leads->id)) {
+            $this->leadsId = $stdClass->leads->id;
+        }
+        if (isset($stdClass->contacts->id)) {
+            $this->contactsId = $stdClass->contacts->id;
+        }
+        if (isset($stdClass->tags) && is_array($stdClass->tags)) {
             foreach ($stdClass->tags as $tag) {
                 $this->tags[$tag->id] = $tag->name;
             }
         }
         if (isset($stdClass->custom_fields) && is_array($stdClass->custom_fields)) {
             foreach ($stdClass->custom_fields as $custom_field) {
-                $customField = CustomField::loadInStdClass($custom_field);
-                if ($customField->getCode() == 'PHONE') {
-                    $this->phones = $customField;
-                } elseif ($customField->getCode() == 'EMAIL') {
-                    $this->emails = $customField;
+                $customField = CustomField::loadInRaw($custom_field);
+                if ($customField->getIsSystem() && $customField->getName() == 'Телефон') {
+                    $this->phones = $customField->getValues();
+                } elseif ($customField->getIsSystem() && $customField->getName() == 'Email') {
+                    $this->emails = $customField->getValues();
                 } else {
                     $this->customFields[$customField->getId()] = $customField;
                 }
@@ -274,11 +292,16 @@ abstract class Base
     }
 
     /**
-     * @return string
+     * @return string|null
      */
     public function getResponsibleUserName()
     {
-        return Amo::$info->get('usersIdAndName')[$this->responsibleUserId];
+        if (Amo::$authorization) {
+            return Amo::$info->get('usersIdAndName')[$this->responsibleUserId];
+        } else {
+            echo 'Необходима авторизация в ЦРМ';
+        }
+        return null;
     }
 
     /**
@@ -287,27 +310,31 @@ abstract class Base
      */
     public function setResponsibleUser($responsibleUserIdOrName)
     {
-        $this->responsibleUserId = Amo::$info->getUserIdFromIdOrName($responsibleUserIdOrName);
-        if (empty($this->responsibleUserId)) {
-            return false;
+        if (Amo::$authorization) {
+            $this->responsibleUserId = Amo::$info->getUserIdFromIdOrName($responsibleUserIdOrName);
+            if (!empty($this->responsibleUserId)) {
+                return true;
+            }
+        } else {
+            echo 'Необходима авторизация в ЦРМ';
         }
-        return true;
+        return false;
     }
 
     /**
      * @return int
      */
-    public function getLinkedCompanyId()
+    public function getCompanyId()
     {
-        return $this->linkedCompanyId;
+        return $this->companyId;
     }
 
     /**
-     * @param int $linkedCompanyId
+     * @param int|null $companyId
      */
-    public function setLinkedCompanyId($linkedCompanyId)
+    public function setCompanyId($companyId = null)
     {
-        $this->linkedCompanyId = $linkedCompanyId;
+        $this->companyId = $companyId;
     }
 
     /**
@@ -390,13 +417,27 @@ abstract class Base
      */
     public function getCustomField($nameOrId)
     {
-        $id = CustomField::getIdFromNameOrId($this->objType['info'], $nameOrId);
         $values = array();
-        if (array_key_exists($id, $this->customFields)) {
-            foreach ($this->customFields[$id]->getValues() as $value) {
-                $values[] = $value->getValue();
+        if (Amo::$authorization) {
+            $id = CustomField::getIdFromNameOrId($this->objType['info'], $nameOrId);
+            if (array_key_exists($id, $this->customFields)) {
+                foreach ($this->customFields[$id]->getValues() as $value) {
+                    $values[] = $value->getValue();
+                }
+                return implode('; ', $values);
             }
-            return implode('; ', $values);
+        } else {
+            $customFields = $this->getCustomFields();
+            if (isset($this->customFields[$nameOrId])) {
+                foreach ($this->customFields[$nameOrId]->getValues() as $value) {
+                    $values[] = $value->getValue();
+                }
+                return implode('; ', $values);
+            } else {
+                if (array_key_exists($nameOrId, $customFields)) {
+                    return $customFields[$nameOrId];
+                }
+            }
         }
         return null;
     }
@@ -406,8 +447,6 @@ abstract class Base
      */
     public function getCustomFields()
     {
-        $type = $this->objType['info'];
-        $idCustomFields = Amo::$info->get("id{$type}CustomFields");
         $customFields = array();
         foreach ($this->customFields as $customField) {
             $id = $customField->getId();
@@ -415,46 +454,52 @@ abstract class Base
             foreach ($this->customFields[$id]->getValues() as $value) {
                 $values[] = $value->getValue();
             }
-            $customFields[$idCustomFields[$id]] = implode(', ', $values);
+            $customFields[$customField->getName()] = implode(', ', $values);
         }
         return $customFields;
     }
 
     /**
-     * @param string|int $customFieldNameOrId
+     * @param string|int $nameOrId
      * @param string $values
      * @return bool
      */
-    public function setCustomField($customFieldNameOrId, $values = null)
+    public function setCustomField($nameOrId, $values)
     {
-        $type = $this->objType['info'];
-        $idCustomFields = Amo::$info->get("id{$type}CustomFields");
-        if (array_key_exists($customFieldNameOrId, $idCustomFields)) {
-            $customFieldId = $customFieldNameOrId;
-            $customFieldName = $idCustomFields[$customFieldNameOrId];
-        } elseif (in_array($customFieldNameOrId, $idCustomFields)) {
-            $customFieldId = array_search($customFieldNameOrId, $idCustomFields);
-            $customFieldName = $customFieldNameOrId;
-        } else
-            return false;
-        if (empty($values)) {
-            if (array_key_exists($customFieldId, $this->customFields)) {
-                $this->customFields[$customFieldId]->delAllValues();
+        if (Amo::$authorization) {
+            $type = $this->objType['info'];
+            $idCustomFields = Amo::$info->get("id{$type}CustomFields");
+            if (array_key_exists($nameOrId, $idCustomFields)) {
+                $id = $nameOrId;
+                $name = $idCustomFields[$nameOrId];
+            } elseif (in_array($nameOrId, $idCustomFields)) {
+                $id = array_search($nameOrId, $idCustomFields);
+                $name = $nameOrId;
+            } else
+                return false;
+            if (!empty($id)) {
+                if (empty($values)) {
+                    if (array_key_exists($id, $this->customFields)) {
+                        $this->customFields[$id]->delAllValues();
+                    }
+                } else {
+                    $values = explode(';', $values);
+                    $valueObj = array();
+                    foreach ($values as $value) {
+                        $value = trim($value);
+                        if (isset(Amo::$info->get("id{$type}CustomFieldsEnums")[$id])) {
+                            $enum = array_search($value, Amo::$info->get("id{$type}CustomFieldsEnums")[$id]);
+                        } else {
+                            $enum = null;
+                        }
+                        $valueObj[] = new Value($value, $enum);
+                    }
+                    $customFieldObj = new CustomField($id, $valueObj, $name);
+                    $this->customFields[$customFieldObj->getId()] = $customFieldObj;
+                }
             }
         } else {
-            $values = explode(';', $values);
-            $valueObj = array();
-            foreach ($values as $value) {
-                $value = trim($value);
-                if (isset(Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId])) {
-                    $enum = array_search($value, Amo::$info->get("id{$type}CustomFieldsEnums")[$customFieldId]);
-                } else {
-                    $enum = null;
-                }
-                $valueObj[] = new Value($value, $enum);
-            }
-            $customFieldObj = new CustomField($customFieldId, $valueObj, $customFieldName);
-            $this->customFields[$customFieldObj->getId()] = $customFieldObj;
+            echo 'Необходима авторизация в ЦРМ';
         }
         return true;
     }
@@ -534,25 +579,30 @@ abstract class Base
     /**
      * @return \DateTime
      */
-    public function getLastModified()
+    public function getDateUpdate()
     {
-        return $this->lastModified;
+        return $this->dateUpdate;
     }
 
     /**
      * @return int
      */
-    public function getModifiedUserId()
+    public function getUserIdUpdate()
     {
-        return $this->modifiedUserId;
+        return $this->userIdUpdate;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getModifiedUserName()
+    public function getUserNameUpdate()
     {
-        return Amo::$info->get('usersIdAndName')[$this->modifiedUserId];
+        if (Amo::$authorization) {
+            return Amo::$info->get('usersIdAndName')[$this->userIdUpdate];
+        } else {
+            echo 'Необходима авторизация в ЦРМ';
+        }
+        return null;
     }
 
     /**
@@ -564,42 +614,87 @@ abstract class Base
     }
 
     /**
-     * @return string
+     * @return string|null
      */
     public function getCreatedUserName()
     {
-        return Amo::$info->get('usersIdAndName')[$this->createdUserId];
+        if (Amo::$authorization) {
+            return Amo::$info->get('usersIdAndName')[$this->createdUserId];
+        } else {
+            echo 'Необходима авторизация в ЦРМ';
+        }
+        return null;
     }
 
     /**
      * @return int[]
      */
-    public function getLinkedLeadsId()
+    public function getLeadsId()
     {
-        return $this->linkedLeadsId;
+        return $this->leadsId;
     }
 
     /**
-     * @param int $linkedLeadId
+     * @param int $leadId
      */
-    public function addLinkedLeadId($linkedLeadId)
+    public function addLeadId($leadId)
     {
-        $this->linkedLeadsId[] = $linkedLeadId;
+        $this->leadsId[] = $leadId;
     }
 
     /**
-     * @param int $linkedLeadId
+     * @param int $leadId
      * @return bool
      */
-    public function delLinkedLeadId($linkedLeadId)
+    public function delLeadId($leadId)
     {
-        if ($key = array_search($linkedLeadId, $this->linkedLeadsId) !== false) {
-            unset($this->linkedLeadsId[$key]);
+        $delKeys = array_keys($this->leadsId, $leadId);
+        if (!empty($delKeys)) {
+            foreach ($delKeys as $delKey) {
+                unset($this->leadsId[$delKey]);
+            }
+            $this->unlink['leads_id'][] = $leadId;
             return true;
         }
         return false;
     }
 
+    /**
+     * @return int[]
+     */
+    public function getContactsId()
+    {
+        $contactsId = array();
+        foreach ($this->contactsId as $contactId) {
+            $contactsId[] = $contactId;
+        }
+        return $contactsId;
+    }
+
+    /**
+     * @param int $contactId
+     */
+    public function addContactId($contactId)
+    {
+        $this->contactsId[] = $contactId;
+    }
+
+    /**
+     * @param int $contactId
+     * @return bool
+     */
+    public function delContactId($contactId)
+    {
+        $delKeys = array_keys($this->contactsId, $contactId);
+        if (!empty($delKeys)) {
+            foreach ($delKeys as $delKey) {
+            unset($this->contactsId[$delKey]);
+        }
+        $this->unlink['contacts_id'][] = $contactId;
+            return true;
+        }
+        return false;
+    }
 
     /**
      * @return string[]
@@ -607,7 +702,7 @@ abstract class Base
     public function getPhones()
     {
         $phones = array();
-        foreach ($this->phones->getValues() as $value) {
+        foreach ($this->phones as $value) {
             $phones[] = $value->getValue();
         }
         return $phones;
@@ -621,22 +716,21 @@ abstract class Base
     public function addPhone($phone, $enum = 'OTHER')
     {
         $enum = mb_strtoupper($enum);
-        if (!empty(Amo::$info)) {
+        if (!empty($this->phones)) {
+            foreach ($this->phones as $value) {
+                if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone)) {
+                    return true;
+                }
+            }
+        }
+        if (Amo::$authorization) {
             $idPhoneEnums = Amo::$info->get('idPhoneEnums');
             if (array_key_exists($enum, $idPhoneEnums)) {
-                foreach ($this->phones->getValues() as $value) {
-                    if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone))
-                        return true;
-                }
-                $this->phones->addValue(new Value($phone, $idPhoneEnums[$enum]));
+                $this->phones[] = new Value($phone, $idPhoneEnums[$enum]);
                 return true;
             }
         } else {
-            foreach ($this->phones->getValues() as $value) {
-                if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone))
-                    return true;
-            }
-            $this->phones->addValue(new Value($phone));
+            $this->phones[] = new Value($phone);
             return true;
         }
         return false;
@@ -648,10 +742,12 @@ abstract class Base
      */
     public function delPhone($phone)
     {
-        foreach ($this->phones->getValues() as $key => $value) {
-            if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone)) {
-                $this->phones->delValue($key);
-                return true;
+        if (!empty($this->phones)) {
+            foreach ($this->phones as $key => $value) {
+                if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone)) {
+                    unset($this->phones[$key]);
+                    return true;
+                }
             }
         }
         return false;
@@ -663,7 +759,7 @@ abstract class Base
     public function getEmails()
     {
         $emails = array();
-        foreach ($this->emails->getValues() as $value) {
+        foreach ($this->emails as $value) {
             $emails[] = $value->getValue();
         }
         return $emails;
@@ -676,23 +772,22 @@ abstract class Base
      */
     public function addEmail($email, $enum = 'OTHER')
     {
+        $email = mb_strtoupper($email);
         $enum = mb_strtoupper($enum);
-        if (!empty(Amo::$info)) {
+        if (!empty($this->emails)) {
+            foreach ($this->emails as $value) {
+                if (mb_strtoupper($value->getValue()) == $email)
+                    return true;
+            }
+        }
+        if (Amo::$authorization) {
             $idEmailEnums = Amo::$info->get('idEmailEnums');
             if (array_key_exists($enum, $idEmailEnums)) {
-                foreach ($this->emails->getValues() as $value) {
-                    if ($value->getValue() == $email)
-                        return true;
-                }
-                $this->emails->addValue(new Value($email, $idEmailEnums[$enum]));
+                $this->emails[] = new Value($email, $idEmailEnums[$enum]);
                 return true;
             }
         } else {
-            foreach ($this->emails->getValues() as $value) {
-                if ($value->getValue() == $email)
-                    return true;
-            }
-            $this->emails->addValue(new Value($email));
+            $this->emails[] = new Value($email);
             return true;
         }
         return false;
@@ -704,10 +799,13 @@ abstract class Base
      */
     public function delEmail($email)
     {
-        foreach ($this->emails->getValues() as $key => $value) {
-            if ($value->getValue() == $email) {
-                $this->emails->delValue($key);
-                return true;
+        $email = mb_strtoupper($email);
+        if (!empty($this->emails)) {
+            foreach ($this->emails as $key => $value) {
+                if (mb_strtoupper($value->getValue()) == $email) {
+                    unset($this->emails[$key]);
+                    return true;
+                }
             }
         }
         return false;
@@ -722,38 +820,47 @@ abstract class Base
         $data = array_merge($data, array(
             'name' => $this->name,
             'responsible_user_id' => $this->responsibleUserId,
-            'linked_company_id' => $this->linkedCompanyId,
-            'linked_leads_id' => $this->linkedLeadsId,
+            'company_id' => $this->companyId,
+            'leads_id' => $this->leadsId,
+            'contacts_id' => $this->contactsId,
+            'tags' => implode(',', $this->tags),
+            'unlink' => $this->unlink,
         ));
         if (empty($this->amoId)) {
-            $data['created_user_id'] = 0;
+            $data['created_by'] = 0;
 
         } else {
             $data['id'] = $this->amoId;
-            $data['last_modified'] = date('U');
-            $data['modified_user_id'] = 0;
+            $data['updated_at'] = date('U');
+            $data['updated_by'] = 0;
         }
-        if (is_array($this->tags))
-            $data['tags'] = implode(',', $this->tags);
         $customFields = $this->customFields;
-        $customFields[] = $this->phones;
-        $customFields[] = $this->emails;
-        /** @var CustomField $customFieldObj */
-        foreach ($customFields as $customFieldObj) {
-            $customField = array(
-                'id' => $customFieldObj->getId(),
-            );
-            $values = array();
-            foreach ($customFieldObj->getValues() as $valueObj) {
-                $value = array(
-                    'enum' => $valueObj->getEnum(),
-                    'value' => $valueObj->getValue(),
-                    'subtype' => $valueObj->getSubtype(),
+        if (!empty($this->phones)) {
+            $customFieldPhone = new CustomField(Amo::$info->get('phoneFieldId'), $this->phones);
+            $customFields[] = $customFieldPhone;
+        }
+        if (!empty($this->emails)) {
+            $customFieldEmail = new CustomField(Amo::$info->get('emailFieldId'), $this->emails);
+            $customFields[] = $customFieldEmail;
+        }
+        if (!empty($customFields)) {
+            /** @var CustomField $customFieldObj */
+            foreach ($customFields as $customFieldObj) {
+                $customField = array(
+                    'id' => $customFieldObj->getId(),
                 );
-                $values[] = $value;
+                $values = array();
+                foreach ($customFieldObj->getValues() as $valueObj) {
+                    $value = array(
+                        'enum' => $valueObj->getEnum(),
+                        'value' => $valueObj->getValue(),
+                        'subtype' => $valueObj->getSubtype(),
+                    );
+                    $values[] = $value;
+                }
+                $customField['values'] = $values;
+                $data['custom_fields'][] = $customField;
             }
-            $customField['values'] = $values;
-            $data['custom_fields'][] = $customField;
         }
         return $data;
     }
@@ -788,13 +895,17 @@ abstract class Base
         $task = new Task();
         $task->setText($text);
         $task->setCompleteTill($completeTill);
-        $types = Amo::$info->get('taskTypes');
-        if (in_array($typeId, $types))
-            $typeId = array_search($typeId, $types);
+        if (Amo::$authorization) {
+            $types = Amo::$info->get('taskTypes');
+            if (in_array($typeId, $types)) {
+                $typeId = array_search($typeId, $types);
+            }
+        } else {
+            $typeId = 3;
+        }
         $task->setType($typeId);
         $task->setResponsibleUser($responsibleUserIdOrName);
         $task->setElementId($this->amoId);
-
         $task->setElementType($this->objType['elementType']);
         $task->save();
         return true;

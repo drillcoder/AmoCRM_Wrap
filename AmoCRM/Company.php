@@ -23,7 +23,6 @@ class Company extends Base
             'elementType' => 3,
             'info' => 'Company',
             'url' => 'company',
-            'request' => 'contacts',
             'delete' => 'companies',
         );
     }
@@ -65,8 +64,9 @@ class Company extends Base
      */
     public function addNote($text, $type = 4)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addNote($text, $type);
     }
 
@@ -79,8 +79,9 @@ class Company extends Base
      */
     public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addTask($text, $responsibleUserIdOrName, $completeTill, $typeId);
     }
 
@@ -90,8 +91,9 @@ class Company extends Base
      */
     public function addFile($pathToFile)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addFile($pathToFile);
     }
 }

@@ -17,11 +17,15 @@ class Note extends Base
     /**
      * @var bool
      */
-    private $editable;
+    protected $editable;
     /**
      * @var string
      */
-    private $attachment;
+    protected $attachment;
+    /**
+     * @var string
+     */
+    protected $params;
 
     /**
      * @return void
@@ -30,9 +34,8 @@ class Note extends Base
     {
         $this->objType = array(
             'elementType' => null,
-            'info' => null,
+            'info' => 'Note',
             'url' => 'notes',
-            'request' => 'notes',
             'delete' => 'notes',
         );
     }
@@ -55,23 +58,25 @@ class Note extends Base
             'element_type' => $this->elementType,
             'note_type' => $this->type,
             'text' => $this->text,
+            'params' => array(
+                'text' => $this->text,
+            ),
         );
         return Base::saveBase($data);
     }
 
     /**
      * @param \stdClass $stdClass
-     * @return Lead
      */
-    public function loadInStdClass($stdClass)
+    public function loadInRaw($stdClass)
     {
-        Base::loadInStdClass($stdClass);
+        Base::loadInRaw($stdClass);
         $this->type = (int)$stdClass->note_type;
         $this->elementId = (int)$stdClass->element_id;
         $this->elementType = (int)$stdClass->element_type;
         $this->text = $stdClass->text;
-        $this->editable = $stdClass->editable == 'Y';
-        $this->attachment = $stdClass->ATTACHEMENT;
+        $this->editable = $stdClass->is_editable;
+        $this->attachment = $stdClass->attachment;
     }
 
     /**

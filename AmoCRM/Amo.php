@@ -6,6 +6,7 @@
  * Date: 21.07.17
  * Time: 17:11
  */
+
 namespace AmoCRM;
 
 use AmoCRM\Helpers\Info;
@@ -19,7 +20,7 @@ class Amo
     /**
      * Version Wrap
      */
-    const VERSION = '4.2';
+    const VERSION = '5';
     /**
      * @var string
      */
@@ -31,7 +32,7 @@ class Amo
     /**
      * @var string
      */
-    private static $userHash;
+    private static $userAPIKey;
     /**
      * @var bool
      */
@@ -45,23 +46,24 @@ class Amo
      * Amo constructor.
      * @param $domain
      * @param $userLogin
-     * @param $userHash
+     * @param $userAPIKey
      */
-    public function __construct($domain, $userLogin, $userHash)
+    public function __construct($domain, $userLogin, $userAPIKey)
     {
         self::$domain = $domain;
         self::$userLogin = $userLogin;
-        self::$userHash = $userHash;
+        self::$userAPIKey = $userAPIKey;
         self::$authorization = true;
         $user = array(
             'USER_LOGIN' => $userLogin,
-            'USER_HASH' => $userHash
+            'USER_HASH' => $userAPIKey
         );
         $res = self::cUrl('private/api/auth.php?type=json', $user);
         if (file_exists(__DIR__ . '/cookie.txt')) {
-            self::$authorization = $res->auth;
+            self::$authorization = $res->response->auth;
             if (self::$authorization) {
-                self::$info = new Info(self::loadInfo());
+                $res = Amo::cUrl('api/v2/account?with=custom_fields,users,pipelines,task_types');
+                self::$info = new Info($res->_embedded);
             }
         } else {
             echo 'Недостаточно прав для создания файлов!';
@@ -78,6 +80,11 @@ class Amo
         return (int)preg_replace("/[^0-9]/", '', $phone);
     }
 
+    public static function getVersion()
+    {
+        return Amo::VERSION;
+    }
+
     /**
      * @param string $url
      * @param array $data
@@ -88,23 +95,29 @@ class Amo
     public static function cUrl($url, $data = array(), $modifiedSince = null, $ajax = false)
     {
         if (self::$authorization) {
-            if (stripos($url, 'unsorted') !== false) {
-                $url .= '?login=' . self::$userLogin . '&api_key=' . self::$userHash;
-            }
             $url = 'https://' . self::$domain . '.amocrm.ru/' . $url;
+            $isUnsorted = stripos($url, 'incoming_leads') !== false;
+            if ($isUnsorted) {
+                $url .= '?login=' . self::$userLogin . '&api_key=' . self::$userAPIKey;
+            }
             $curl = curl_init();
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($curl, CURLOPT_URL, $url);
             curl_setopt($curl, CURLOPT_HEADER, false);
             curl_setopt($curl, CURLOPT_USERAGENT, 'amoCRM-API-client/1.0');
+            curl_setopt($curl, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_2);
             $headers = array();
             if (!empty($data)) {
                 curl_setopt($curl, CURLOPT_POST, true);
                 if ($ajax) {
                     $headers[] = 'X-Requested-With: XMLHttpRequest';
                 } else {
-                    $headers[] = 'Content-Type: application/json';
-                    $data = json_encode($data);
+                    if ($isUnsorted) {
+                        $data = http_build_query($data);
+                    } else {
+                        $headers[] = 'Content-Type: application/json';
+                        $data = json_encode($data);
+                    }
                 }
                 curl_setopt($curl, CURLOPT_POSTFIELDS, $data);
             }
@@ -123,7 +136,9 @@ class Amo
                 return $response;
             }
             if ($response)
-                return $response->response;
+                return $response;
+        } else {
+            echo 'Необходима авторизация в ЦРМ';
         }
         return null;
     }
@@ -137,31 +152,22 @@ class Amo
     }
 
     /**
-     * @return false|mixed
-     */
-    private function loadInfo()
-    {
-        $res = Amo::cUrl('private/api/v2/json/accounts/current');
-        return $res->account;
-    }
-
-    /**
      * @param $phone
      * @param $email
      * @return Contact[]|null
      */
     public function searchContact($phone, $email = null)
     {
-        $link = 'private/api/v2/json/contacts/list?query=';
+        $link = 'api/v2/contacts/?query=';
         $contacts = array();
         if (!empty($phone)) {
             $phone = self::clearPhone($phone);
             $linkPhone = $link . $phone;
             $res = self::cUrl($linkPhone);
             if ($res) {
-                foreach ($res->contacts as $stdClass) {
+                foreach ($res->_embedded->items as $raw) {
                     $contact = new Contact();
-                    $contact->loadInStdClass($stdClass);
+                    $contact->loadInRaw($raw);
                     $contacts[$contact->getAmoId()] = $contact;
                 }
             }
@@ -170,9 +176,9 @@ class Amo
             $linkEmail = $link . $email;
             $res = self::cUrl($linkEmail);
             if ($res) {
-                foreach ($res->contacts as $stdClass) {
+                foreach ($res->_embedded->items as $raw) {
                     $contact = new Contact();
-                    $contact->loadInStdClass($stdClass);
+                    $contact->loadInRaw($raw);
                     $contacts[$contact->getAmoId()] = $contact;
                 }
             }
@@ -184,17 +190,35 @@ class Amo
 
     /**
      * @param string $query
+     * @return Company[]|null
+     */
+    public function searchCompany($query)
+    {
+        $res = Amo::cUrl("api/v2/companies?query=$query");
+        if (!empty($res)) {
+            $companies = array();
+            foreach ($res->_embedded->items as $raw) {
+                $company = new Company();
+                $company->loadInRaw($raw);
+                $companies[$company->getAmoId()] = $company;
+            }
+            return $companies;
+        }
+        return null;
+    }
+
+    /**
+     * @param string $query
      * @return Lead[]|null
      */
     public function searchLead($query)
     {
-        $res = Amo::cUrl("
-}private/api/v2/json/leads/list?query=$query");
+        $res = Amo::cUrl("api/v2/leads?query=$query");
         if (!empty($res)) {
             $leads = array();
-            foreach ($res->leads as $stdClass) {
+            foreach ($res->_embedded->items as $raw) {
                 $lead = new Lead();
-                $lead->loadInStdClass($stdClass);
+                $lead->loadInRaw($raw);
                 $leads[$lead->getAmoId()] = $lead;
             }
             return $leads;
@@ -332,53 +356,45 @@ class Amo
             case 'Contact':
                 $class = $type;
                 $typeForUrl = 'contacts';
-                $typeRes = $typeForUrl;
                 $typeForUrlType = 'contact';
                 break;
             case 'Lead':
                 $class = $type;
                 $typeForUrl = 'leads';
-                $typeRes = $typeForUrl;
                 break;
             case 'Company':
                 $class = $type;
                 $typeForUrl = 'company';
-                $typeRes = 'contacts';
                 $typeForUrlType = 'company';
                 break;
             case 'Task':
                 $class = $type;
                 $typeForUrl = 'tasks';
-                $typeRes = $typeForUrl;
                 break;
             case 'Note-Contact':
                 $class = 'Note';
                 $typeForUrl = 'notes';
                 $typeForUrlType = 'contact';
-                $typeRes = $typeForUrl;
                 break;
             case 'Note-Lead':
                 $class = 'Note';
                 $typeForUrl = 'notes';
                 $typeForUrlType = 'lead';
-                $typeRes = $typeForUrl;
                 break;
             case 'Note-Company':
                 $class = 'Note';
                 $typeForUrl = 'notes';
                 $typeForUrlType = 'company';
-                $typeRes = $typeForUrl;
                 break;
             case 'Note-Task':
                 $class = 'Note';
                 $typeForUrl = 'notes';
                 $typeForUrlType = 'task';
-                $typeRes = $typeForUrl;
                 break;
         }
-        if (isset($typeForUrl) && isset($typeRes) && isset($class)) {
+        if (isset($typeForUrl) && isset($class)) {
             $typeObj = "AmoCRM\\$class";
-            $url = "private/api/v2/json/$typeForUrl/list?";
+            $url = "api/v2/$typeForUrl?";
             if (!empty($query)) {
                 $url .= "&query=$query";
             }
@@ -413,9 +429,9 @@ class Amo
                 if ($res === null) {
                     break;
                 } else {
-                    $result = array_merge($result, $res->$typeRes);
+                    $result = array_merge($result, $res->_embedded->items);
                     if ($limit != 0) {
-                        $totalCount -= count($res->$typeRes);
+                        $totalCount -= count($res->_embedded->items);
                         if ($totalCount <= 0) {
                             break;
                         }
@@ -433,7 +449,7 @@ class Amo
                     foreach ($result as $baseRaw) {
                         /** @var Base $baseObj */
                         $baseObj = new $typeObj();
-                        $baseObj->loadInStdClass($baseRaw);
+                        $baseObj->loadInRaw($baseRaw);
                         $baseObjects[] = $baseObj;
                     }
                     return $baseObjects;
@@ -441,5 +457,35 @@ class Amo
             }
         }
         return false;
+    }
+
+    /**
+     * @param string $directory
+     */
+    public function backup($directory)
+    {
+        $this->createBackupFile($directory, 'contacts.backup', $this->contactsList(null, 0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'leads.backup', $this->leadsList(null, 0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'company.backup', $this->companyList(null, 0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'tasks.backup', $this->tasksList(null, 0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-contacts.backup', $this->notesContactList(null, 0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-leads.backup', $this->notesLeadList(null, 0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-company.backup', $this->notesCompanyList(null, 0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-tasks.backup', $this->notesTaskList(null, 0, 0, array(), null, true));
+    }
+
+    /**
+     * @param string $directory
+     * @param string $nameFile
+     * @param mixed $var
+     */
+    private function createBackupFile($directory, $nameFile, $var)
+    {
+        if (!is_dir($directory)) {
+            mkdir($directory, 0777, true);
+        }
+        $f = fopen("$directory/$nameFile", 'w+');
+        fwrite($f, serialize($var));
+        fclose($f);
     }
 }

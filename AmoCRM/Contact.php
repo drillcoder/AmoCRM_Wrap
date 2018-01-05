@@ -23,7 +23,6 @@ class Contact extends Base
             'elementType' => 1,
             'info' => 'Contact',
             'url' => 'contacts',
-            'request' => 'contacts',
             'delete' => 'contacts',
         );
     }
@@ -65,8 +64,9 @@ class Contact extends Base
      */
     public function addNote($text, $type = 4)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addNote($text, $type);
     }
 
@@ -79,8 +79,9 @@ class Contact extends Base
      */
     public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addTask($text, $responsibleUserIdOrName, $completeTill, $typeId);
     }
 
@@ -90,8 +91,9 @@ class Contact extends Base
      */
     public function addFile($pathToFile)
     {
-        if (empty($this->amoId))
+        if (empty($this->amoId)) {
             $this->save();
+        }
         return parent::addFile($pathToFile);
     }
 }

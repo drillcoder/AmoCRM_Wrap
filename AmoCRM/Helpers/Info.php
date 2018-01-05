@@ -61,11 +61,11 @@ class Info
     /**
      * @var array
      */
-    private $pipelines;
+    private $pipelines = array();
     /**
      * @var array
      */
-    private $taskTypes;
+    private $taskTypes = array();
 
     /**
      * Info constructor.
@@ -73,37 +73,35 @@ class Info
      */
     public function __construct($info)
     {
-        $this->idContactCustomFieldsEnums;
+        foreach ($info->users as $user) {
+            $this->usersIdAndName[$user->id] = $user->name;
+        }
         foreach ($info->custom_fields->contacts as $field) {
             $this->idContactCustomFields[$field->id] = $field->name;
-            if ($field->code == 'PHONE') {
+            if ($field->name == 'Телефон' && $field->is_system) {
                 $this->phoneFieldId = $field->id;
                 $this->idPhoneEnums = array_flip(json_decode(json_encode($field->enums), true));
             }
-            if ($field->code == 'EMAIL') {
+            if ($field->name == 'Email' && $field->is_system) {
                 $this->emailFieldId = $field->id;
                 $this->idEmailEnums = array_flip(json_decode(json_encode($field->enums), true));
             }
-            if ($field->type_id == 5) {
+            if ($field->field_type == 5) {
                 $this->idContactCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
             }
         }
         foreach ($info->custom_fields->leads as $field) {
             $this->idLeadCustomFields[$field->id] = $field->name;
-            if ($field->type_id == 5) {
+            if ($field->field_type == 4) {
                 $this->idLeadCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
             }
         }
         foreach ($info->custom_fields->companies as $field) {
             $this->idCompanyCustomFields[$field->id] = $field->name;
-            if ($field->type_id == 5) {
+            if ($field->field_type == 5) {
                 $this->idCompanyCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
             }
         }
-        foreach ($info->users as $user) {
-            $this->usersIdAndName[$user->id] = $user->name;
-        }
-        $this->pipelines = array();
         foreach ($info->pipelines as $pipeline) {
             $this->pipelines[$pipeline->id]['name'] = $pipeline->name;
             $this->pipelines[$pipeline->id]['statuses'] = array();

@@ -24,9 +24,9 @@ class CustomField
      */
     private $name;
     /**
-     * @var string
+     * @var bool
      */
-    private $code;
+    private $isSystem;
     /**
      * @var Value[]
      */
@@ -37,13 +37,13 @@ class CustomField
      * @param int $id
      * @param Value[] $values
      * @param string|null $name
-     * @param string|null $code
+     * @param bool $isSystem
      */
-    public function __construct($id = 0, array $values = array(), $name = null, $code = null)
+    public function __construct($id = 0, array $values = array(), $name = null, $isSystem = false)
     {
         $this->id = (int)$id;
         $this->name = $name;
-        $this->code = $code;
+        $this->isSystem = $isSystem;
         $this->values = $values;
     }
 
@@ -51,15 +51,13 @@ class CustomField
      * @param \stdClass $stdClass
      * @return CustomField
      */
-    public static function loadInStdClass($stdClass)
+    public static function loadInRaw($stdClass)
     {
         $values = array();
         foreach ($stdClass->values as $valueStdClass) {
             $values[] = Value::loadInStdClass($valueStdClass);
         }
-        if (!isset($stdClass->code))
-            $stdClass->code = null;
-        return new CustomField($stdClass->id, $values, $stdClass->name, $stdClass->code);
+        return new CustomField($stdClass->id, $values, $stdClass->name, $stdClass->is_system);
     }
 
     /**
@@ -96,6 +94,18 @@ class CustomField
     }
 
     /**
+     * @return string[]
+     */
+    public function getArrayValues()
+    {
+        $values = array();
+        foreach ($this->values as $value) {
+            $values[] = $value->getValue();
+        }
+        return $values;
+    }
+
+    /**
      * @param Value $value
      */
     public function addValue($value)
@@ -120,10 +130,18 @@ class CustomField
     }
 
     /**
+     * @return bool
+     */
+    public function getIsSystem()
+    {
+        return $this->isSystem;
+    }
+
+    /**
      * @return string
      */
-    public function getCode()
+    public function getName()
     {
-        return $this->code;
+        return $this->name;
     }
 }
