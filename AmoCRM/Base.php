@@ -688,9 +688,9 @@ abstract class Base
         $delKeys = array_keys($this->contactsId, $contactId);
         if (!empty($delKeys)) {
             foreach ($delKeys as $delKey) {
-            unset($this->contactsId[$delKey]);
-        }
-        $this->unlink['contacts_id'][] = $contactId;
+                unset($this->contactsId[$delKey]);
+            }
+            $this->unlink['contacts_id'][] = $contactId;
             return true;
         }
         return false;
@@ -772,11 +772,11 @@ abstract class Base
      */
     public function addEmail($email, $enum = 'OTHER')
     {
-        $email = mb_strtoupper($email);
+        $email = mb_strtolower($email);
         $enum = mb_strtoupper($enum);
         if (!empty($this->emails)) {
             foreach ($this->emails as $value) {
-                if (mb_strtoupper($value->getValue()) == $email)
+                if (mb_strtolower($value->getValue()) == $email)
                     return true;
             }
         }
@@ -799,10 +799,10 @@ abstract class Base
      */
     public function delEmail($email)
     {
-        $email = mb_strtoupper($email);
+        $email = mb_strtolower($email);
         if (!empty($this->emails)) {
             foreach ($this->emails as $key => $value) {
-                if (mb_strtoupper($value->getValue()) == $email) {
+                if (mb_strtolower($value->getValue()) == $email) {
                     unset($this->emails[$key]);
                     return true;
                 }
@@ -836,10 +836,22 @@ abstract class Base
         }
         $customFields = $this->customFields;
         if (!empty($this->phones)) {
+            $idPhoneEnums = Amo::$info->get('idPhoneEnums');
+            foreach ($this->phones as &$phone) {
+                if ($phone->getEnum() === 0) {
+                    $phone->setEnum($idPhoneEnums['OTHER']);
+                }
+            }
             $customFieldPhone = new CustomField(Amo::$info->get('phoneFieldId'), $this->phones);
             $customFields[] = $customFieldPhone;
         }
         if (!empty($this->emails)) {
+            $idEmailEnums = Amo::$info->get('idEmailEnums');
+            foreach ($this->emails as &$email) {
+                if ($email->getEnum() === 0) {
+                    $email->setEnum($idEmailEnums['OTHER']);
+                }
+            }
             $customFieldEmail = new CustomField(Amo::$info->get('emailFieldId'), $this->emails);
             $customFields[] = $customFieldEmail;
         }

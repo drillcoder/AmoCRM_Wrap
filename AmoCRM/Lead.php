@@ -54,7 +54,7 @@ class Lead extends Base
         $this->pipelineId = (int)$stdClass->pipeline->id;
         $this->statusId = (int)$stdClass->status_id;
         if (isset($stdClass->main_contact->id)) {
-            $this->mainContactId = $stdClass->main_contact->id;
+            $this->mainContactId = (int)$stdClass->main_contact->id;
         }
     }
 

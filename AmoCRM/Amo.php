@@ -14,13 +14,14 @@ use AmoCRM\Helpers\Info;
 /**
  * Class Amo
  * @package AmoCRM
+ * @version Version 5.0.1
  */
 class Amo
 {
     /**
      * Version Wrap
      */
-    const VERSION = '5';
+    const VERSION = '5.0.1';
     /**
      * @var string
      */
@@ -77,7 +78,7 @@ class Amo
      */
     public static function clearPhone($phone)
     {
-        return (int)preg_replace("/[^0-9]/", '', $phone);
+        return preg_replace("/[^0-9]/", '', $phone);
     }
 
     public static function getVersion()
@@ -233,7 +234,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     public function contactsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
@@ -247,7 +248,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     public function leadsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
@@ -261,7 +262,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     public function companyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
@@ -275,7 +276,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     public function tasksList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
@@ -289,7 +290,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     public function notesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
@@ -303,7 +304,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     public function notesLeadList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
@@ -317,7 +318,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     public function notesCompanyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
@@ -331,7 +332,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     public function notesTaskList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
     {
@@ -346,7 +347,7 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|false|null
+     * @return Base[]|\stdClass[]|false|null
      */
     private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince = null, $isRaw = false)
     {

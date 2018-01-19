@@ -97,4 +97,19 @@ class Value
         return $this->subtype;
     }
 
+    /**
+     * @param string $enum
+     */
+    public function setEnum($enum)
+    {
+        $this->enum = $enum;
+    }
+
+    /**
+     * @param string $value
+     */
+    public function setValue($value)
+    {
+        $this->value = $value;
+    }
 }
