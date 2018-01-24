@@ -39,17 +39,9 @@ class Task extends Base
     /**
      * @return array
      */
-    public function getRaw()
+    protected function getExtraRaw()
     {
-        return Base::getRawBase();
-    }
-
-    /**
-     * @return bool
-     */
-    public function save()
-    {
-        $data = array(
+        return array(
             'complete_till_at' => $this->completeTill->format('U'),
             'is_completed' => $this->isComplete,
             'element_id' => $this->elementId,
@@ -57,7 +49,23 @@ class Task extends Base
             'task_type' => $this->type,
             'text' => $this->text,
         );
-        return Base::saveBase($data);
+    }
+
+    /**
+     * @return array
+     */
+    public function getRaw()
+    {
+        return Base::getRawBase($this->getExtraRaw());
+    }
+
+    /**
+     * @return bool
+     */
+    public function save()
+    {
+
+        return Base::saveBase($this->getExtraRaw());
     }
 
     /**

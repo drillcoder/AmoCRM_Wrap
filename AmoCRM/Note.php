@@ -43,17 +43,9 @@ class Note extends Base
     /**
      * @return array
      */
-    public function getRaw()
+    protected function getExtraRaw()
     {
-        return Base::getRawBase();
-    }
-
-    /**
-     * @return bool
-     */
-    public function save()
-    {
-        $data = array(
+        return array(
             'element_id' => $this->elementId,
             'element_type' => $this->elementType,
             'note_type' => $this->type,
@@ -62,7 +54,23 @@ class Note extends Base
                 'text' => $this->text,
             ),
         );
-        return Base::saveBase($data);
+    }
+
+    /**
+     * @return array
+     */
+    public function getRaw()
+    {
+        return Base::getRawBase($this->getExtraRaw());
+    }
+
+    /**
+     * @return bool
+     */
+    public function save()
+    {
+
+        return Base::saveBase($this->getExtraRaw());
     }
 
     /**

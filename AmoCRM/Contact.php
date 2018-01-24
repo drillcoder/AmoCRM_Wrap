@@ -28,11 +28,19 @@ class Contact extends Base
     }
 
     /**
+     * @return array
+     */
+    protected function getExtraRaw()
+    {
+        return array();
+    }
+
+    /**
      * @return bool
      */
     public function save()
     {
-        return Base::saveBase();
+        return Base::saveBase($this->getExtraRaw());
     }
 
     /**
@@ -40,7 +48,7 @@ class Contact extends Base
      */
     public function getRaw()
     {
-        return Base::getRawBase();
+        return Base::getRawBase($this->getExtraRaw());
     }
 
     /**

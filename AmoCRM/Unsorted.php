@@ -38,6 +38,10 @@ class Unsorted
      * @var Company[]|array
      */
     protected $companies = array();
+    /**
+     * @var Note[]
+     */
+    protected $notes;
 
     /**
      * Unsorted constructor.
@@ -64,6 +68,11 @@ class Unsorted
     public function save()
     {
         $lead = $this->lead->getRaw();
+        if (!empty($this->notes)) {
+            foreach ($this->notes as $note) {
+                $lead['notes'][] = $note->getRaw();
+            }
+        }
         $contacts = array();
         /** @var Contact $firstContact */
         $firstContact = current($this->contacts);
@@ -136,5 +145,18 @@ class Unsorted
             return true;
         }
         return false;
+    }
+
+    /**
+     * @param string $text
+     * @param int $type
+     */
+    public function addNote($text, $type = 4)
+    {
+        $note = new Note();
+        $note->setText($text);
+        $note->setType($type);
+        $note->setElementType('lead');
+        $this->notes[] = $note;
     }
 }

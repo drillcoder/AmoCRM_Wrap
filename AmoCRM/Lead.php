@@ -45,6 +45,18 @@ class Lead extends Base
     }
 
     /**
+     * @return array
+     */
+    protected function getExtraRaw()
+    {
+        return array(
+            'pipeline_id' => $this->pipelineId,
+            'sale' => $this->sale,
+            'status_id' => $this->statusId,
+        );
+    }
+
+    /**
      * @param \stdClass $stdClass
      */
     public function loadInRaw($stdClass)
@@ -63,12 +75,7 @@ class Lead extends Base
      */
     public function save()
     {
-        $data = array(
-            'pipeline_id' => $this->pipelineId,
-            'sale' => $this->sale,
-            'status_id' => $this->statusId,
-        );
-        return Base::saveBase($data);
+        return Base::saveBase($this->getExtraRaw());
     }
 
     /**
@@ -76,13 +83,7 @@ class Lead extends Base
      */
     public function getRaw()
     {
-        $data = array(
-            'main_contact_id' => $this->contactsId,
-            'pipeline_id' => $this->pipelineId,
-            'price' => $this->sale,
-            'status_id' => $this->statusId,
-        );
-        return Base::getRawBase($data);
+        return Base::getRawBase($this->getExtraRaw());
     }
 
     /**

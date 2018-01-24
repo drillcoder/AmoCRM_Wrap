@@ -14,14 +14,14 @@ use AmoCRM\Helpers\Info;
 /**
  * Class Amo
  * @package AmoCRM
- * @version Version 5.0.1
+ * @version Version 5.1
  */
 class Amo
 {
     /**
      * Version Wrap
      */
-    const VERSION = '5.0.1';
+    const VERSION = '5.1';
     /**
      * @var string
      */
@@ -81,6 +81,9 @@ class Amo
         return preg_replace("/[^0-9]/", '', $phone);
     }
 
+    /**
+     * @return string
+     */
     public static function getVersion()
     {
         return Amo::VERSION;

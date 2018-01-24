@@ -129,9 +129,14 @@ abstract class Base
     public abstract function save();
 
     /**
-     * @return bool
+     * @return array
      */
     public abstract function getRaw();
+
+    /**
+     * @return array
+     */
+    protected abstract function getExtraRaw();
 
     /**
      * @param array $data
@@ -817,18 +822,29 @@ abstract class Base
      */
     public function getRawBase($data = array())
     {
-        $data = array_merge($data, array(
-            'name' => $this->name,
-            'responsible_user_id' => $this->responsibleUserId,
-            'company_id' => $this->companyId,
-            'leads_id' => $this->leadsId,
-            'contacts_id' => $this->contactsId,
-            'tags' => implode(',', $this->tags),
-            'unlink' => $this->unlink,
-        ));
+        if (!empty($this->name)) {
+            $data['name'] = $this->name;
+        }
+        if (!empty($this->responsibleUserId)) {
+            $data['responsible_user_id'] = $this->responsibleUserId;
+        }
+        if (!empty($this->companyId)) {
+            $data['company_id'] = $this->companyId;
+        }
+        if (!empty($this->leadsId)) {
+            $data['leads_id'] = $this->leadsId;
+        }
+        if (!empty($this->contactsId)) {
+            $data['contacts_id'] = $this->contactsId;
+        }
+        if (!empty($this->tags)) {
+            $data['tags'] = implode(',', $this->tags);
+        }
+        if (!empty($this->unlink)) {
+            $data['unlink'] = $this->unlink;
+        }
         if (empty($this->amoId)) {
             $data['created_by'] = 0;
-
         } else {
             $data['id'] = $this->amoId;
             $data['updated_at'] = date('U');
