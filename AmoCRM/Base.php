@@ -152,21 +152,6 @@ abstract class Base
             }
             $requestData[$method] = array($this->getRawBase($data));
             $typeUrl = $this->objType['url'];
-//            $requestData = json_encode(array(
-//                'add' => [
-//                    [
-//                        'element_id' => 24311599,
-//                        'element_type' => 1,
-//                        'note_type' => 25,
-//                        'created_by' => 883347,
-//                        'responsible_user_id' => 486288,
-//                        'created_at' => date('U'),
-//                        'params' => [
-////                            'TEXT' => 'тест',
-//                        ],
-//                    ]
-//                ]
-//            ));
             $res = Amo::cUrl("api/v2/$typeUrl", $requestData);
             if ($method == 'update') {
                 $idRes = $res->_embedded->items[0]->id;
