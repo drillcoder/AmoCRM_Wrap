@@ -14,14 +14,14 @@ use AmoCRM\Helpers\Info;
 /**
  * Class Amo
  * @package AmoCRM
- * @version Version 5.1
+ * @version Version 5.2
  */
 class Amo
 {
     /**
-     * Version Wrap
+     * Wrap Version
      */
-    const VERSION = '5.1';
+    const VERSION = '5.2';
     /**
      * @var string
      */
@@ -44,10 +44,19 @@ class Amo
     public static $info;
 
     /**
+     * @param string $phone
+     * @return integer
+     */
+    public static function clearPhone($phone)
+    {
+        return preg_replace("/[^0-9]/", '', $phone);
+    }
+
+    /**
      * Amo constructor.
-     * @param $domain
-     * @param $userLogin
-     * @param $userAPIKey
+     * @param string $domain
+     * @param string $userLogin
+     * @param string $userAPIKey
      */
     public function __construct($domain, $userLogin, $userAPIKey)
     {
@@ -73,30 +82,13 @@ class Amo
     }
 
     /**
-     * @param string $phone
-     * @return integer
-     */
-    public static function clearPhone($phone)
-    {
-        return preg_replace("/[^0-9]/", '', $phone);
-    }
-
-    /**
-     * @return string
-     */
-    public static function getVersion()
-    {
-        return Amo::VERSION;
-    }
-
-    /**
      * @param string $url
      * @param array $data
      * @param \DateTime|null $modifiedSince
      * @param bool $ajax
      * @return mixed|null
      */
-    public static function cUrl($url, $data = array(), $modifiedSince = null, $ajax = false)
+    public static function cUrl($url, $data = array(), \DateTime $modifiedSince = null, $ajax = false)
     {
         if (self::$authorization) {
             $url = 'https://' . self::$domain . '.amocrm.ru/' . $url;
@@ -136,11 +128,9 @@ class Amo
             $out = curl_exec($curl);
             curl_close($curl);
             $response = json_decode($out);
-            if ($ajax) {
+            if ($response) {
                 return $response;
             }
-            if ($response)
-                return $response;
         } else {
             echo 'Необходима авторизация в ЦРМ';
         }
@@ -148,7 +138,7 @@ class Amo
     }
 
     /**
-     * @return boolean
+     * @return bool
      */
     public function isAuthorization()
     {
@@ -158,7 +148,7 @@ class Amo
     /**
      * @param $phone
      * @param $email
-     * @return Contact[]|null
+     * @return Contact[]
      */
     public function searchContact($phone, $email = null)
     {
@@ -187,47 +177,43 @@ class Amo
                 }
             }
         }
-        if (!empty($contacts))
-            return $contacts;
-        return null;
+        return $contacts;
     }
 
     /**
      * @param string $query
-     * @return Company[]|null
+     * @return Company[]
      */
     public function searchCompany($query)
     {
         $res = Amo::cUrl("api/v2/companies?query=$query");
+        $companies = array();
         if (!empty($res)) {
-            $companies = array();
             foreach ($res->_embedded->items as $raw) {
                 $company = new Company();
                 $company->loadInRaw($raw);
                 $companies[$company->getAmoId()] = $company;
             }
-            return $companies;
         }
-        return null;
+        return $companies;
     }
 
     /**
      * @param string $query
-     * @return Lead[]|null
+     * @return Lead[]
      */
     public function searchLead($query)
     {
         $res = Amo::cUrl("api/v2/leads?query=$query");
+        $leads = array();
         if (!empty($res)) {
-            $leads = array();
             foreach ($res->_embedded->items as $raw) {
                 $lead = new Lead();
                 $lead->loadInRaw($raw);
                 $leads[$lead->getAmoId()] = $lead;
             }
-            return $leads;
         }
-        return null;
+        return $leads;
     }
 
     /**
@@ -237,9 +223,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    public function contactsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
+    public function contactsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                 \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
@@ -251,9 +238,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    public function leadsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
+    public function leadsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                              \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
@@ -265,9 +253,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    public function companyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
+    public function companyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
@@ -279,9 +268,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    public function tasksList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
+    public function tasksList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                              \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
@@ -293,9 +283,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    public function notesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
+    public function notesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                     \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Note-Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
@@ -307,9 +298,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    public function notesLeadList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
+    public function notesLeadList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                  \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Note-Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
@@ -321,9 +313,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    public function notesCompanyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
+    public function notesCompanyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                     \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Note-Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
@@ -335,9 +328,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    public function notesTaskList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(), \DateTime $modifiedSince = null, $isRaw = false)
+    public function notesTaskList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                  \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Note-Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
@@ -350,9 +344,10 @@ class Amo
      * @param array $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]|false|null
+     * @return Base[]|\stdClass[]
      */
-    private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince = null, $isRaw = false)
+    private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince = null,
+                             $isRaw)
     {
         $offset = (int)$offset;
         $limit = (int)$limit;
@@ -443,24 +438,20 @@ class Amo
                     $offset += 500;
                 }
             }
-            if (empty($result)) {
-                return null;
+            if ($isRaw) {
+                return $result;
             } else {
-                if ($isRaw) {
-                    return $result;
-                } else {
-                    $baseObjects = array();
-                    foreach ($result as $baseRaw) {
-                        /** @var Base $baseObj */
-                        $baseObj = new $typeObj();
-                        $baseObj->loadInRaw($baseRaw);
-                        $baseObjects[] = $baseObj;
-                    }
-                    return $baseObjects;
+                $baseObjects = array();
+                foreach ($result as $baseRaw) {
+                    /** @var Base $baseObj */
+                    $baseObj = new $typeObj();
+                    $baseObj->loadInRaw($baseRaw);
+                    $baseObjects[] = $baseObj;
                 }
+                return $baseObjects;
             }
         }
-        return false;
+        return array();
     }
 
     /**
@@ -468,14 +459,22 @@ class Amo
      */
     public function backup($directory)
     {
-        $this->createBackupFile($directory, 'contacts.backup', $this->contactsList(null, 0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'leads.backup', $this->leadsList(null, 0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'company.backup', $this->companyList(null, 0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'tasks.backup', $this->tasksList(null, 0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'notes-contacts.backup', $this->notesContactList(null, 0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'notes-leads.backup', $this->notesLeadList(null, 0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'notes-company.backup', $this->notesCompanyList(null, 0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'notes-tasks.backup', $this->notesTaskList(null, 0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'contacts.backup', $this->contactsList(null, 0,
+            0, array(), null, true));
+        $this->createBackupFile($directory, 'leads.backup', $this->leadsList(null, 0, 0,
+            array(), null, true));
+        $this->createBackupFile($directory, 'company.backup', $this->companyList(null, 0, 0,
+            array(), null, true));
+        $this->createBackupFile($directory, 'tasks.backup', $this->tasksList(null, 0, 0,
+            array(), null, true));
+        $this->createBackupFile($directory, 'notes-contacts.backup', $this->notesContactList(null,
+            0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-leads.backup', $this->notesLeadList(null, 0,
+            0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-company.backup', $this->notesCompanyList(null,
+            0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-tasks.backup', $this->notesTaskList(null, 0,
+            0, array(), null, true));
     }
 
     /**

@@ -28,6 +28,11 @@ class Note extends Base
     protected $params;
 
     /**
+     * @var string
+     */
+    protected $service;
+
+    /**
      * @return void
      */
     protected function setObjType()
@@ -52,6 +57,7 @@ class Note extends Base
             'text' => $this->text,
             'params' => array(
                 'text' => $this->text,
+                'service' => $this->service,
             ),
         );
     }
@@ -111,5 +117,11 @@ class Note extends Base
         $this->attachment = $attachment;
     }
 
-
+    /**
+     * @param string $service
+     */
+    public function setService($service)
+    {
+        $this->service = $service;
+    }
 }

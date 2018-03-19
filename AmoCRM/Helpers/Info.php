@@ -164,6 +164,10 @@ class Info
         return null;
     }
 
+    /**
+     * @param int|string $userIdOrName
+     * @return int|null
+     */
     public function getUserIdFromIdOrName($userIdOrName)
     {
         if (array_key_exists($userIdOrName, $this->usersIdAndName)) {

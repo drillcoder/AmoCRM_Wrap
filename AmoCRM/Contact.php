@@ -80,6 +80,19 @@ class Contact extends Base
 
     /**
      * @param string $text
+     * @param string $serviceName
+     * @return bool
+     */
+    public function addSystemNote($text, $serviceName)
+    {
+        if (empty($this->amoId)) {
+            $this->save();
+        }
+        return parent::addNote($text, $serviceName);
+    }
+
+    /**
+     * @param string $text
      * @param \DateTime|null $completeTill
      * @param int|string $typeId
      * @param int|string|null $responsibleUserIdOrName

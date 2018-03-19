@@ -18,7 +18,7 @@ use AmoCRM\Helpers\Value;
 abstract class Base
 {
     /**
-     * @var string[]
+     * @var array
      */
     protected $objType = array(
         'elementType' => 0,
@@ -152,6 +152,21 @@ abstract class Base
             }
             $requestData[$method] = array($this->getRawBase($data));
             $typeUrl = $this->objType['url'];
+//            $requestData = json_encode(array(
+//                'add' => [
+//                    [
+//                        'element_id' => 24311599,
+//                        'element_type' => 1,
+//                        'note_type' => 25,
+//                        'created_by' => 883347,
+//                        'responsible_user_id' => 486288,
+//                        'created_at' => date('U'),
+//                        'params' => [
+////                            'TEXT' => 'тест',
+//                        ],
+//                    ]
+//                ]
+//            ));
             $res = Amo::cUrl("api/v2/$typeUrl", $requestData);
             if ($method == 'update') {
                 $idRes = $res->_embedded->items[0]->id;
@@ -193,9 +208,8 @@ abstract class Base
                 $link .= "&type=$type";
             }
             $res = Amo::cUrl($link);
-            if ($res) {
-                $this->loadInRaw($res->_embedded->items[0]);
-                return true;
+            if (!empty($res->_embedded->items[0])) {
+                return $this->loadInRaw($res->_embedded->items[0]);
             }
         }
         return false;
@@ -203,50 +217,55 @@ abstract class Base
 
     /**
      * @param \stdClass|array $stdClass
+     * @return bool
      */
     public function loadInRaw($stdClass)
     {
         $stdClass = json_decode(json_encode($stdClass));
-        $this->amoId = (int)$stdClass->id;
-        if (isset($stdClass->name))
-            $this->name = $stdClass->name;
-        $this->createdUserId = (int)$stdClass->created_by;
-        $dateCreate = new \DateTime();
-        $dateCreate->setTimestamp($stdClass->created_at);
-        $this->dateCreate = $dateCreate;
-        $dateUpdate = new \DateTime();
-        $dateUpdate->setTimestamp($stdClass->updated_at);
-        $this->dateUpdate = $dateUpdate;
-        $this->responsibleUserId = (int)$stdClass->responsible_user_id;
-        if (isset($stdClass->updated_by)) {
-            $this->userIdUpdate = (int)$stdClass->updated_by;
-        }
-        if (isset($stdClass->company->id)) {
-            $this->companyId = (int)$stdClass->company->id;
-        }
-        if (isset($stdClass->leads->id)) {
-            $this->leadsId = $stdClass->leads->id;
-        }
-        if (isset($stdClass->contacts->id)) {
-            $this->contactsId = $stdClass->contacts->id;
-        }
-        if (isset($stdClass->tags) && is_array($stdClass->tags)) {
-            foreach ($stdClass->tags as $tag) {
-                $this->tags[$tag->id] = $tag->name;
+        if (!empty($stdClass->id)) {
+            $this->amoId = (int)$stdClass->id;
+            if (isset($stdClass->name))
+                $this->name = $stdClass->name;
+            $this->createdUserId = (int)$stdClass->created_by;
+            $dateCreate = new \DateTime();
+            $dateCreate->setTimestamp($stdClass->created_at);
+            $this->dateCreate = $dateCreate;
+            $dateUpdate = new \DateTime();
+            $dateUpdate->setTimestamp($stdClass->updated_at);
+            $this->dateUpdate = $dateUpdate;
+            $this->responsibleUserId = (int)$stdClass->responsible_user_id;
+            if (isset($stdClass->updated_by)) {
+                $this->userIdUpdate = (int)$stdClass->updated_by;
             }
-        }
-        if (isset($stdClass->custom_fields) && is_array($stdClass->custom_fields)) {
-            foreach ($stdClass->custom_fields as $custom_field) {
-                $customField = CustomField::loadInRaw($custom_field);
-                if ($customField->getIsSystem() && $customField->getName() == 'Телефон') {
-                    $this->phones = $customField->getValues();
-                } elseif ($customField->getIsSystem() && $customField->getName() == 'Email') {
-                    $this->emails = $customField->getValues();
-                } else {
-                    $this->customFields[$customField->getId()] = $customField;
+            if (isset($stdClass->company->id)) {
+                $this->companyId = (int)$stdClass->company->id;
+            }
+            if (isset($stdClass->leads->id)) {
+                $this->leadsId = $stdClass->leads->id;
+            }
+            if (isset($stdClass->contacts->id)) {
+                $this->contactsId = $stdClass->contacts->id;
+            }
+            if (isset($stdClass->tags) && is_array($stdClass->tags)) {
+                foreach ($stdClass->tags as $tag) {
+                    $this->tags[$tag->id] = $tag->name;
                 }
             }
+            if (isset($stdClass->custom_fields) && is_array($stdClass->custom_fields)) {
+                foreach ($stdClass->custom_fields as $custom_field) {
+                    $customField = CustomField::loadInRaw($custom_field);
+                    if ($customField->getIsSystem() && $customField->getName() == 'Телефон') {
+                        $this->phones = $customField->getValues();
+                    } elseif ($customField->getIsSystem() && $customField->getName() == 'Email') {
+                        $this->emails = $customField->getValues();
+                    } else {
+                        $this->customFields[$customField->getId()] = $customField;
+                    }
+                }
+            }
+            return true;
         }
+        return false;
     }
 
     /**
@@ -258,14 +277,14 @@ abstract class Base
         $post = array('ACTION' => 'DELETE', 'ID[]' => $this->amoId);
         $url = "ajax/$typeDelete/multiple/delete/";
         $res = Amo::cUrl($url, http_build_query($post), null, true);
-        if ($res->status == 'success') {
+        if ($res !== null && $res->status == 'success') {
             return true;
         }
         return false;
     }
 
     /**
-     * @return int|null
+     * @return int
      */
     public function getAmoId()
     {
@@ -343,7 +362,7 @@ abstract class Base
     }
 
     /**
-     * @return \string[]
+     * @return string[]
      */
     public function getTags()
     {
@@ -379,48 +398,56 @@ abstract class Base
      */
     public function addCustomField($name, $type)
     {
-        $elementType = $this->objType['elementType'];
-        $data['request']['fields']['add'] = array(
-            array(
-                "name" => $name,
-                "type" => $type,
-                "element_type" => $elementType,
-                "origin" => 'AmoCRM Wrap'
-            )
-        );
-        $res = Amo::cUrl('private/api/v2/json/fields/set', $data);
-        if ($res)
-            return $res->fields->add[0]->id;
+        if (Amo::$authorization) {
+            $elementType = $this->objType['elementType'];
+            $data['request']['fields']['add'] = array(
+                array(
+                    "name" => $name,
+                    "type" => $type,
+                    "element_type" => $elementType,
+                    "origin" => 'AmoCRM Wrap'
+                )
+            );
+            $res = Amo::cUrl('private/api/v2/json/fields/set', $data);
+            if ($res !== null)
+                return $res->fields->add[0]->id;
+        } else {
+            echo 'Необходима авторизация в ЦРМ';
+        }
         return false;
     }
 
     /**
-     * @param $nameOrId
+     * @param int|string $nameOrId
      * @return bool
      */
     public function delCustomField($nameOrId)
     {
-        $id = CustomField::getIdFromNameOrId($this->objType['info'], $nameOrId);
-        if (empty($id))
-            return false;
-        $data['request']['fields']['delete'] = array(
-            array(
-                "id" => $id,
-                "origin" => 'AmoCRM Wrap'
-            )
-        );
-        $res = Amo::cUrl('private/api/v2/json/fields/set', $data);
-        if ($res)
-            return $res->fields->delete[0]->id == $id;
+        if (Amo::$authorization) {
+            $id = CustomField::getIdFromNameOrId($this->objType['info'], $nameOrId);
+            if (empty($id))
+                return false;
+            $data['request']['fields']['delete'] = array(
+                array(
+                    "id" => $id,
+                    "origin" => 'AmoCRM Wrap'
+                )
+            );
+            $res = Amo::cUrl('private/api/v2/json/fields/set', $data);
+            if ($res !== null)
+                return $res->fields->delete[0]->id == $id;
+        } else {
+            echo 'Необходима авторизация в ЦРМ';
+        }
         return false;
     }
 
 
     /**
      * @param string|int $nameOrId
-     * @return string|null;
+     * @return string
      */
-    public function getCustomField($nameOrId)
+    public function getCustomFieldValue($nameOrId)
     {
         $values = array();
         if (Amo::$authorization) {
@@ -432,7 +459,7 @@ abstract class Base
                 return implode('; ', $values);
             }
         } else {
-            $customFields = $this->getCustomFields();
+            $customFields = $this->getCustomFieldsValue();
             if (isset($this->customFields[$nameOrId])) {
                 foreach ($this->customFields[$nameOrId]->getValues() as $value) {
                     $values[] = $value->getValue();
@@ -444,13 +471,13 @@ abstract class Base
                 }
             }
         }
-        return null;
+        return '';
     }
 
     /**
-     * @return string[]|null;
+     * @return string[];
      */
-    public function getCustomFields()
+    public function getCustomFieldsValue()
     {
         $customFields = array();
         foreach ($this->customFields as $customField) {
@@ -480,8 +507,9 @@ abstract class Base
             } elseif (in_array($nameOrId, $idCustomFields)) {
                 $id = array_search($nameOrId, $idCustomFields);
                 $name = $nameOrId;
-            } else
+            } else {
                 return false;
+            }
             if (!empty($id)) {
                 if (empty($values)) {
                     if (array_key_exists($id, $this->customFields)) {
@@ -501,12 +529,13 @@ abstract class Base
                     }
                     $customFieldObj = new CustomField($id, $valueObj, $name);
                     $this->customFields[$customFieldObj->getId()] = $customFieldObj;
+                    return true;
                 }
             }
         } else {
             echo 'Необходима авторизация в ЦРМ';
         }
-        return true;
+        return false;
     }
 
     /**
@@ -566,7 +595,7 @@ abstract class Base
     }
 
     /**
-     * @param int $type
+     * @param int|string $type
      */
     public function setType($type)
     {
@@ -598,7 +627,7 @@ abstract class Base
     }
 
     /**
-     * @return string|null
+     * @return string
      */
     public function getUserNameUpdate()
     {
@@ -607,7 +636,7 @@ abstract class Base
         } else {
             echo 'Необходима авторизация в ЦРМ';
         }
-        return null;
+        return '';
     }
 
     /**
@@ -619,7 +648,7 @@ abstract class Base
     }
 
     /**
-     * @return string|null
+     * @return string
      */
     public function getCreatedUserName()
     {
@@ -628,7 +657,7 @@ abstract class Base
         } else {
             echo 'Необходима авторизация в ЦРМ';
         }
-        return null;
+        return '';
     }
 
     /**
@@ -837,9 +866,7 @@ abstract class Base
         if (!empty($this->contactsId)) {
             $data['contacts_id'] = $this->contactsId;
         }
-        if (!empty($this->tags)) {
-            $data['tags'] = implode(',', $this->tags);
-        }
+        $data['tags'] = implode(',', $this->tags);
         if (!empty($this->unlink)) {
             $data['unlink'] = $this->unlink;
         }
@@ -903,6 +930,22 @@ abstract class Base
         $note = new Note();
         $note->setText($text);
         $note->setType($type);
+        $note->setElementId($this->amoId);
+        $note->setElementType($this->objType['elementType']);
+        return $note->save();
+    }
+
+    /**
+     * @param string $text
+     * @param string $serviceName
+     * @return bool
+     */
+    public function addSystemNote($text, $serviceName)
+    {
+        $note = new Note();
+        $note->setText($text);
+        $note->setType(25);
+        $note->setService($serviceName);
         $note->setElementId($this->amoId);
         $note->setElementType($this->objType['elementType']);
         return $note->save();
