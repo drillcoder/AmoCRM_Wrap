@@ -18,18 +18,9 @@ use AmoCRM\Helpers\Value;
 abstract class Base
 {
     /**
-     * @var array
-     */
-    protected $objType = array(
-        'elementType' => 0,
-        'info' => null,
-        'url' => null,
-        'delete' => null,
-    );
-    /**
      * @var int
      */
-    protected $amoId;
+    protected $id;
     /**
      * @var string
      */
@@ -109,7 +100,6 @@ abstract class Base
      */
     public function __construct($amoId = null)
     {
-        $this->setObjType();
         if (Amo::$authorization) {
             if (!empty($amoId)) {
                 $amoId = (int)$amoId;
@@ -119,19 +109,20 @@ abstract class Base
     }
 
     /**
-     * @return void
-     */
-    protected abstract function setObjType();
-
-    /**
      * @return bool
      */
-    public abstract function save();
+    public function save()
+    {
+        return Base::saveBase($this->getExtraRaw());
+    }
 
     /**
      * @return array
      */
-    public abstract function getRaw();
+    public function getRaw()
+    {
+        return Base::getRawBase($this->getExtraRaw());
+    }
 
     /**
      * @return array
@@ -145,17 +136,17 @@ abstract class Base
     public function saveBase($data = array())
     {
         if (Amo::$authorization) {
-            if (empty($this->amoId)) {
+            if (empty($this->id)) {
                 $method = 'add';
             } else {
                 $method = 'update';
             }
             $requestData[$method] = array($this->getRawBase($data));
-            $typeUrl = $this->objType['url'];
+            $typeUrl = self::url;
             $res = Amo::cUrl("api/v2/$typeUrl", $requestData);
             if ($method == 'update') {
                 $idRes = $res->_embedded->items[0]->id;
-                if ($idRes == $this->amoId)
+                if ($idRes == $this->id)
                     return true;
             } elseif ($method == 'add') {
                 if (isset($res->_embedded->items[0]->id) && $this->loadInAmoId($res->_embedded->items[0]->id)) {
@@ -208,7 +199,7 @@ abstract class Base
     {
         $stdClass = json_decode(json_encode($stdClass));
         if (!empty($stdClass->id)) {
-            $this->amoId = (int)$stdClass->id;
+            $this->id = (int)$stdClass->id;
             if (isset($stdClass->name))
                 $this->name = $stdClass->name;
             $this->createdUserId = (int)$stdClass->created_by;
@@ -259,7 +250,7 @@ abstract class Base
     public function delete()
     {
         $typeDelete = $this->objType['delete'];
-        $post = array('ACTION' => 'DELETE', 'ID[]' => $this->amoId);
+        $post = array('ACTION' => 'DELETE', 'ID[]' => $this->id);
         $url = "ajax/$typeDelete/multiple/delete/";
         $res = Amo::cUrl($url, http_build_query($post), null, true);
         if ($res !== null && $res->status == 'success') {
@@ -271,9 +262,9 @@ abstract class Base
     /**
      * @return int
      */
-    public function getAmoId()
+    public function getId()
     {
-        return $this->amoId;
+        return $this->id;
     }
 
     /**
@@ -855,10 +846,10 @@ abstract class Base
         if (!empty($this->unlink)) {
             $data['unlink'] = $this->unlink;
         }
-        if (empty($this->amoId)) {
+        if (empty($this->id)) {
             $data['created_by'] = 0;
         } else {
-            $data['id'] = $this->amoId;
+            $data['id'] = $this->id;
             $data['updated_at'] = date('U');
             $data['updated_by'] = 0;
         }
@@ -915,7 +906,7 @@ abstract class Base
         $note = new Note();
         $note->setText($text);
         $note->setType($type);
-        $note->setElementId($this->amoId);
+        $note->setElementId($this->id);
         $note->setElementType($this->objType['elementType']);
         return $note->save();
     }
@@ -931,7 +922,7 @@ abstract class Base
         $note->setText($text);
         $note->setType(25);
         $note->setService($serviceName);
-        $note->setElementId($this->amoId);
+        $note->setElementId($this->id);
         $note->setElementType($this->objType['elementType']);
         return $note->save();
     }
@@ -950,7 +941,9 @@ abstract class Base
         }
         $task = new Task();
         $task->setText($text);
-        $task->setCompleteTill($completeTill);
+        if ($completeTill !== null) {
+            $task->setCompleteTill($completeTill);
+        }
         if (Amo::$authorization) {
             $types = Amo::$info->get('taskTypes');
             if (in_array($typeId, $types)) {
@@ -961,7 +954,7 @@ abstract class Base
         }
         $task->setType($typeId);
         $task->setResponsibleUser($responsibleUserIdOrName);
-        $task->setElementId($this->amoId);
+        $task->setElementId($this->id);
         $task->setElementType($this->objType['elementType']);
         $task->save();
         return true;
@@ -985,7 +978,8 @@ abstract class Base
                     'UserFile' => "@" . $pathToFile
                 );
             }
-            $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID=" . $this->amoId . "&ELEMENT_TYPE=" . $elementType . "&fileapi" . str_replace(".", "", microtime(true));
+            $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID=" . $this->id . "&ELEMENT_TYPE=" .
+                $elementType . "&fileapi" . str_replace(".", "", microtime(true));
             $res = Amo::cUrl($url, $post, null, true);
             if (isset($res->status) && $res->status == 'fail') {
                 return false;
@@ -995,7 +989,7 @@ abstract class Base
                 'DATE_CREATE' => time(),
                 'ATTACH' => $res->note->params->link,
                 'BODY' => $res->note->params->text,
-                'ELEMENT_ID' => $this->amoId,
+                'ELEMENT_ID' => $this->id,
                 'ELEMENT_TYPE' => $elementType,
             );
             $res = Amo::cUrl("private/notes/edit2.php", $post, null, true);

@@ -73,22 +73,6 @@ class Lead extends Base
     /**
      * @return bool
      */
-    public function save()
-    {
-        return Base::saveBase($this->getExtraRaw());
-    }
-
-    /**
-     * @return array
-     */
-    public function getRaw()
-    {
-        return Base::getRawBase($this->getExtraRaw());
-    }
-
-    /**
-     * @return bool
-     */
     public function delete()
     {
         if (parent::delete()) {
@@ -199,7 +183,7 @@ class Lead extends Base
      */
     public function addNote($text, $type = 4)
     {
-        if (empty($this->amoId)) {
+        if (empty($this->id)) {
             $this->save();
         }
         return parent::addNote($text, $type);
@@ -214,7 +198,7 @@ class Lead extends Base
      */
     public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
     {
-        if (empty($this->amoId)) {
+        if (empty($this->id)) {
             $this->save();
         }
         return parent::addTask($text, $responsibleUserIdOrName, $completeTill, $typeId);
@@ -226,7 +210,7 @@ class Lead extends Base
      */
     public function addFile($pathToFile)
     {
-        if (empty($this->amoId)) {
+        if (empty($this->id)) {
             $this->save();
         }
         return parent::addFile($pathToFile);

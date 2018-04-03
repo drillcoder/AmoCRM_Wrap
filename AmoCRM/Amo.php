@@ -160,7 +160,7 @@ class Amo
                 foreach ($res->_embedded->items as $raw) {
                     $contact = new Contact();
                     $contact->loadInRaw($raw);
-                    $contacts[$contact->getAmoId()] = $contact;
+                    $contacts[$contact->getId()] = $contact;
                 }
             }
         }
@@ -171,7 +171,7 @@ class Amo
                 foreach ($res->_embedded->items as $raw) {
                     $contact = new Contact();
                     $contact->loadInRaw($raw);
-                    $contacts[$contact->getAmoId()] = $contact;
+                    $contacts[$contact->getId()] = $contact;
                 }
             }
         }
@@ -190,7 +190,7 @@ class Amo
             foreach ($res->_embedded->items as $raw) {
                 $company = new Company();
                 $company->loadInRaw($raw);
-                $companies[$company->getAmoId()] = $company;
+                $companies[$company->getId()] = $company;
             }
         }
         return $companies;
@@ -208,7 +208,7 @@ class Amo
             foreach ($res->_embedded->items as $raw) {
                 $lead = new Lead();
                 $lead->loadInRaw($raw);
-                $leads[$lead->getAmoId()] = $lead;
+                $leads[$lead->getId()] = $lead;
             }
         }
         return $leads;

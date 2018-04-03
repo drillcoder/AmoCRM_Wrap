@@ -23,6 +23,12 @@ class Task extends Base
      */
     protected $completeTill;
 
+    public function __construct($amoId = null)
+    {
+        parent::__construct($amoId);
+        $this->completeTill = new \DateTime();
+    }
+
     /**
      * @return void
      */
@@ -64,7 +70,6 @@ class Task extends Base
      */
     public function save()
     {
-
         return Base::saveBase($this->getExtraRaw());
     }
 
@@ -79,9 +84,7 @@ class Task extends Base
         $this->elementType = (int)$stdClass->element_type;
         $this->text = $stdClass->text;
         $this->isComplete = $stdClass->is_completed;
-        $completeTill = new \DateTime();
-        $completeTill->setTimestamp($stdClass->complete_till_at);
-        $this->completeTill = $completeTill;
+        $this->completeTill->setTimestamp($stdClass->complete_till_at);
     }
 
     /**
