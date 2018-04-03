@@ -69,15 +69,10 @@ class Amo
             'USER_HASH' => $userAPIKey
         );
         $res = self::cUrl('private/api/auth.php?type=json', $user);
-        if (file_exists(__DIR__ . '/cookie.txt')) {
-            self::$authorization = $res->response->auth;
-            if (self::$authorization) {
-                $res = Amo::cUrl('api/v2/account?with=custom_fields,users,pipelines,task_types');
-                self::$info = new Info($res->_embedded);
-            }
-        } else {
-            echo 'Недостаточно прав для создания файлов!';
-            self::$authorization = false;
+        self::$authorization = $res->response->auth;
+        if (self::$authorization) {
+            $res = Amo::cUrl('api/v2/account?with=custom_fields,users,pipelines,task_types');
+            self::$info = new Info($res->_embedded);
         }
     }
 
@@ -95,6 +90,11 @@ class Amo
             $isUnsorted = stripos($url, 'incoming_leads') !== false;
             if ($isUnsorted) {
                 $url .= '?login=' . self::$userLogin . '&api_key=' . self::$userAPIKey;
+            } else {
+                if (strripos($url, '?') === false) {
+                    $url .= '?';
+                }
+                $url .= '&USER_LOGIN=' . self::$userLogin . '&USER_HASH=' . self::$userAPIKey;
             }
             $curl = curl_init();
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
@@ -121,8 +121,6 @@ class Amo
                 $headers[] = 'IF-MODIFIED-SINCE: ' . $modifiedSince->format(\DateTime::RFC1123);
             }
             curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($curl, CURLOPT_COOKIEFILE, dirname(__FILE__) . '/cookie.txt');
-            curl_setopt($curl, CURLOPT_COOKIEJAR, dirname(__FILE__) . '/cookie.txt');
             curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
             $out = curl_exec($curl);
