@@ -22,7 +22,7 @@
   },
   "autoload": {
     "psr-4": {
-      "DrillCoder\\AmoCRM_Wrap\\": "scr/"
+      "DrillCoder\\AmoCRM_Wrap\\": "src/"
     }
   }
 }
