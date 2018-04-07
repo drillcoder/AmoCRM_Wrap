@@ -1,12 +1,13 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 12.09.17
  * Time: 10:47
  */
 
-namespace AmoCRM\Helpers;
+namespace DrillCoder\AmoCRM_Wrap\Helpers;
+use DrillCoder\AmoCRM_Wrap\AmoWrapException;
 
 /**
  * Class Info
@@ -69,14 +70,14 @@ class Info
 
     /**
      * Info constructor.
-     * @param \stdClass $info
+     * @param \stdClass $raw
      */
-    public function __construct($info)
+    public function __construct($raw)
     {
-        foreach ($info->users as $user) {
+        foreach ($raw->users as $user) {
             $this->usersIdAndName[$user->id] = $user->name;
         }
-        foreach ($info->custom_fields->contacts as $field) {
+        foreach ($raw->custom_fields->contacts as $field) {
             $this->idContactCustomFields[$field->id] = $field->name;
             if ($field->name == 'Телефон' && $field->is_system) {
                 $this->phoneFieldId = $field->id;
@@ -90,19 +91,19 @@ class Info
                 $this->idContactCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
             }
         }
-        foreach ($info->custom_fields->leads as $field) {
+        foreach ($raw->custom_fields->leads as $field) {
             $this->idLeadCustomFields[$field->id] = $field->name;
             if ($field->field_type == 4) {
                 $this->idLeadCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
             }
         }
-        foreach ($info->custom_fields->companies as $field) {
+        foreach ($raw->custom_fields->companies as $field) {
             $this->idCompanyCustomFields[$field->id] = $field->name;
             if ($field->field_type == 5) {
                 $this->idCompanyCustomFieldsEnums[$field->id] = json_decode(json_encode($field->enums), true);
             }
         }
-        foreach ($info->pipelines as $pipeline) {
+        foreach ($raw->pipelines as $pipeline) {
             $this->pipelines[$pipeline->id]['name'] = $pipeline->name;
             $this->pipelines[$pipeline->id]['statuses'] = array();
             foreach ($pipeline->statuses as $status) {
@@ -112,7 +113,7 @@ class Info
                 );
             }
         }
-        foreach ($info->task_types as $type) {
+        foreach ($raw->task_types as $type) {
             $this->taskTypes[$type->id] = $type->name;
         }
     }
@@ -120,15 +121,21 @@ class Info
     /**
      * @param $prop
      * @return mixed
+     * @throws AmoWrapException
      */
     public function get($prop)
     {
-        return $this->$prop;
+        if (isset($this->$prop)) {
+            return $this->$prop;
+        } else {
+            throw new AmoWrapException('Параметр не найден');
+        }
     }
 
     /**
      * @param int|string $pipelineIdOrName
      * @return int|null
+     * @throws AmoWrapException
      */
     public function getPipelineIdFromIdOrName($pipelineIdOrName)
     {
@@ -141,13 +148,14 @@ class Info
                 }
             }
         }
-        return null;
+        throw new AmoWrapException('Воронка не найдена');
     }
 
     /**
      * @param int $idOrNamePipeline
      * @param int|string $idOrNameStatus
      * @return int|null
+     * @throws AmoWrapException
      */
     public function getStatusIdFromStatusIdOrNameAndPipelineIdOrName($idOrNamePipeline, $idOrNameStatus)
     {
@@ -161,12 +169,13 @@ class Info
                 }
             }
         }
-        return null;
+        throw new AmoWrapException('Статус не найден');
     }
 
     /**
      * @param int|string $userIdOrName
      * @return int|null
+     * @throws AmoWrapException
      */
     public function getUserIdFromIdOrName($userIdOrName)
     {
@@ -179,6 +188,6 @@ class Info
                 }
             }
         }
-        return null;
+        throw new AmoWrapException('Пользователь не найден');
     }
 }

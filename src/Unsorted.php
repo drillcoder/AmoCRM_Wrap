@@ -1,12 +1,13 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 09.10.2017
  * Time: 12:51
  */
 
-namespace AmoCRM;
+namespace DrillCoder\AmoCRM_Wrap;
+
 
 /**
  * Class Unsorted
@@ -50,6 +51,7 @@ class Unsorted
      * @param Lead $lead
      * @param int|string $pipelineIdOrName
      * @param Company[] $companies
+     * @throws AmoWrapException
      */
     public function __construct($formName, $lead, $contacts = array(), $pipelineIdOrName = null, $companies = array())
     {
@@ -58,12 +60,13 @@ class Unsorted
         $this->companies = $companies;
         $this->formName = $formName;
         if (!empty($pipelineIdOrName)) {
-            $this->pipelineId = Amo::$info->getPipelineIdFromIdOrName($pipelineIdOrName);
+            $this->pipelineId = AmoCRM::getInfo()->getPipelineIdFromIdOrName($pipelineIdOrName);
         }
     }
 
     /**
-     * @return bool
+     * @return Unsorted
+     * @throws AmoWrapException
      */
     public function save()
     {
@@ -101,25 +104,28 @@ class Unsorted
                     ),
                 ),
             );
-            $response = Amo::cUrl('api/v2/incoming_leads/form', $request);
+            $response = AmoCRM::cUrl('api/v2/incoming_leads/form', $request);
             if ($response->status == 'success') {
                 $this->id = $response->data[0];
-                return true;
+                return $this;
             }
         }
-        return false;
+        throw new AmoWrapException('Не удалось сохранить заявку в неразобранное');
     }
 
     /**
      * @param string $text
      * @param int $type
+     * @return Unsorted
+     * @throws AmoWrapException
      */
     public function addNote($text, $type = 4)
     {
         $note = new Note();
-        $note->setText($text);
-        $note->setType($type);
-        $note->setElementType('lead');
+        $note->setText($text)
+            ->setType($type)
+            ->setElementType('lead');
         $this->notes[] = $note;
+        return $this;
     }
 }

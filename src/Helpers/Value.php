@@ -1,12 +1,12 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 10.09.17
  * Time: 21:20
  */
 
-namespace AmoCRM\Helpers;
+namespace DrillCoder\AmoCRM_Wrap\Helpers;
 
 /**
  * Class Value
@@ -99,17 +99,21 @@ class Value
 
     /**
      * @param string $enum
+     * @return Value
      */
     public function setEnum($enum)
     {
         $this->enum = $enum;
+        return $this;
     }
 
     /**
      * @param string $value
+     * @return Value
      */
     public function setValue($value)
     {
         $this->value = $value;
+        return $this;
     }
 }

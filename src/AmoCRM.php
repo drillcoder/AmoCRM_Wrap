@@ -2,26 +2,27 @@
 
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 21.07.17
  * Time: 17:11
  */
 
-namespace AmoCRM;
+namespace DrillCoder\AmoCRM_Wrap;
 
-use AmoCRM\Helpers\Info;
+use DrillCoder\AmoCRM_Wrap\Helpers\Config;
+use DrillCoder\AmoCRM_Wrap\Helpers\Info;
 
 /**
  * Class Amo
  * @package AmoCRM
- * @version Version 5.2
+ * @version Version 6.0
  */
-class Amo
+class AmoCRM
 {
     /**
      * Wrap Version
      */
-    const VERSION = '5.2';
+    const VERSION = '6.0';
     /**
      * @var string
      */
@@ -37,11 +38,11 @@ class Amo
     /**
      * @var bool
      */
-    public static $authorization;
+    private static $authorization;
     /**
      * @var Info
      */
-    public static $info;
+    private static $info;
 
     /**
      * @param string $phone
@@ -57,6 +58,7 @@ class Amo
      * @param string $domain
      * @param string $userLogin
      * @param string $userAPIKey
+     * @throws AmoWrapException
      */
     public function __construct($domain, $userLogin, $userAPIKey)
     {
@@ -71,8 +73,10 @@ class Amo
         $res = self::cUrl('private/api/auth.php?type=json', $user);
         self::$authorization = $res->response->auth;
         if (self::$authorization) {
-            $res = Amo::cUrl('api/v2/account?with=custom_fields,users,pipelines,task_types');
+            $res = AmoCRM::cUrl('api/v2/account?with=custom_fields,users,pipelines,task_types');
             self::$info = new Info($res->_embedded);
+        } else {
+            throw new AmoWrapException('Данные для авторизации не верны');
         }
     }
 
@@ -82,6 +86,7 @@ class Amo
      * @param \DateTime|null $modifiedSince
      * @param bool $ajax
      * @return mixed|null
+     * @throws AmoWrapException
      */
     public static function cUrl($url, $data = array(), \DateTime $modifiedSince = null, $ajax = false)
     {
@@ -130,7 +135,7 @@ class Amo
                 return $response;
             }
         } else {
-            echo 'Необходима авторизация в ЦРМ';
+            throw new AmoWrapException('Требуется авторизация');
         }
         return null;
     }
@@ -138,15 +143,29 @@ class Amo
     /**
      * @return bool
      */
-    public function isAuthorization()
+    public static function isAuthorization()
     {
         return self::$authorization;
+    }
+
+    /**
+     * @return Info
+     * @throws AmoWrapException
+     */
+    public static function getInfo()
+    {
+        if (self::$info !== null) {
+            return self::$info;
+        } else {
+            throw new AmoWrapException('Требуется авторизация');
+        }
     }
 
     /**
      * @param $phone
      * @param $email
      * @return Contact[]
+     * @throws AmoWrapException
      */
     public function searchContact($phone, $email = null)
     {
@@ -156,7 +175,7 @@ class Amo
             $phone = self::clearPhone($phone);
             $linkPhone = $link . $phone;
             $res = self::cUrl($linkPhone);
-            if ($res) {
+            if ($res !== null) {
                 foreach ($res->_embedded->items as $raw) {
                     $contact = new Contact();
                     $contact->loadInRaw($raw);
@@ -167,7 +186,7 @@ class Amo
         if (!empty($email)) {
             $linkEmail = $link . $email;
             $res = self::cUrl($linkEmail);
-            if ($res) {
+            if ($res !== null) {
                 foreach ($res->_embedded->items as $raw) {
                     $contact = new Contact();
                     $contact->loadInRaw($raw);
@@ -181,12 +200,13 @@ class Amo
     /**
      * @param string $query
      * @return Company[]
+     * @throws AmoWrapException
      */
     public function searchCompany($query)
     {
-        $res = Amo::cUrl("api/v2/companies?query=$query");
+        $res = AmoCRM::cUrl("api/v2/companies?query=$query");
         $companies = array();
-        if (!empty($res)) {
+        if ($res !== null) {
             foreach ($res->_embedded->items as $raw) {
                 $company = new Company();
                 $company->loadInRaw($raw);
@@ -199,12 +219,13 @@ class Amo
     /**
      * @param string $query
      * @return Lead[]
+     * @throws AmoWrapException
      */
     public function searchLead($query)
     {
-        $res = Amo::cUrl("api/v2/leads?query=$query");
+        $res = AmoCRM::cUrl("api/v2/leads?query=$query");
         $leads = array();
-        if (!empty($res)) {
+        if ($res !== null) {
             foreach ($res->_embedded->items as $raw) {
                 $lead = new Lead();
                 $lead->loadInRaw($raw);
@@ -218,10 +239,11 @@ class Amo
      * @param null $query
      * @param int $limit
      * @param int $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Contact[]|\stdClass[]
+     * @throws AmoWrapException
      */
     public function contactsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                                  \DateTime $modifiedSince = null, $isRaw = false)
@@ -233,10 +255,11 @@ class Amo
      * @param null $query
      * @param int $limit
      * @param int $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Lead[]|\stdClass[]
+     * @throws AmoWrapException
      */
     public function leadsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                               \DateTime $modifiedSince = null, $isRaw = false)
@@ -248,10 +271,11 @@ class Amo
      * @param null $query
      * @param int $limit
      * @param int $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Company[]|\stdClass[]
+     * @throws AmoWrapException
      */
     public function companyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                                 \DateTime $modifiedSince = null, $isRaw = false)
@@ -263,10 +287,11 @@ class Amo
      * @param null $query
      * @param int $limit
      * @param int $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Task[]|\stdClass[]
+     * @throws AmoWrapException
      */
     public function tasksList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                               \DateTime $modifiedSince = null, $isRaw = false)
@@ -278,10 +303,11 @@ class Amo
      * @param null $query
      * @param int $limit
      * @param int $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Note[]|\stdClass[]
+     * @throws AmoWrapException
      */
     public function notesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                                      \DateTime $modifiedSince = null, $isRaw = false)
@@ -293,10 +319,11 @@ class Amo
      * @param null $query
      * @param int $limit
      * @param int $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Note[]|\stdClass[]
+     * @throws AmoWrapException
      */
     public function notesLeadList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                                   \DateTime $modifiedSince = null, $isRaw = false)
@@ -308,10 +335,11 @@ class Amo
      * @param null $query
      * @param int $limit
      * @param int $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Note[]|\stdClass[]
+     * @throws AmoWrapException
      */
     public function notesCompanyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                                      \DateTime $modifiedSince = null, $isRaw = false)
@@ -323,10 +351,11 @@ class Amo
      * @param null $query
      * @param int $limit
      * @param int $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Note[]|\stdClass[]
+     * @throws AmoWrapException
      */
     public function notesTaskList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                                   \DateTime $modifiedSince = null, $isRaw = false)
@@ -339,10 +368,11 @@ class Amo
      * @param string $query
      * @param integer $limit
      * @param integer $offset
-     * @param array $responsibleUsersIdOrName
+     * @param array|string|int $responsibleUsersIdOrName
      * @param \DateTime|null $modifiedSince
      * @param bool $isRaw
-     * @return Base[]|\stdClass[]
+     * @return Company[]|Contact[]|Lead[]|\stdClass[]
+     * @throws AmoWrapException
      */
     private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince = null,
                              $isRaw)
@@ -350,47 +380,41 @@ class Amo
         $offset = (int)$offset;
         $limit = (int)$limit;
         switch ($type) {
+            case 'Company':
+                $className = $type;
+                $typeForUrlType = 'company';
+                break;
             case 'Contact':
-                $class = $type;
-                $typeForUrl = 'contacts';
+                $className = $type;
                 $typeForUrlType = 'contact';
                 break;
             case 'Lead':
-                $class = $type;
-                $typeForUrl = 'leads';
-                break;
-            case 'Company':
-                $class = $type;
-                $typeForUrl = 'company';
-                $typeForUrlType = 'company';
-                break;
-            case 'Task':
-                $class = $type;
-                $typeForUrl = 'tasks';
+                $className = $type;
                 break;
             case 'Note-Contact':
-                $class = 'Note';
-                $typeForUrl = 'notes';
+                $className = 'Note';
                 $typeForUrlType = 'contact';
                 break;
             case 'Note-Lead':
-                $class = 'Note';
-                $typeForUrl = 'notes';
+                $className = 'Note';
                 $typeForUrlType = 'lead';
                 break;
             case 'Note-Company':
-                $class = 'Note';
-                $typeForUrl = 'notes';
+                $className = 'Note';
                 $typeForUrlType = 'company';
                 break;
             case 'Note-Task':
-                $class = 'Note';
-                $typeForUrl = 'notes';
+                $className = 'Note';
                 $typeForUrlType = 'task';
                 break;
+            case 'Task':
+                $className = $type;
+                break;
         }
-        if (isset($typeForUrl) && isset($class)) {
-            $typeObj = "AmoCRM\\$class";
+        if (isset($className)) {
+            $typeObj = "AmoCRM\\$className";
+            $config = new Config();
+            $typeForUrl = $config->{strtolower($className)};
             $url = "api/v2/$typeForUrl?";
             if (!empty($query)) {
                 $url .= "&query=$query";
@@ -401,11 +425,11 @@ class Amo
             if (!empty($responsibleUsersIdOrName)) {
                 if (is_array($responsibleUsersIdOrName)) {
                     foreach ($responsibleUsersIdOrName as $responsibleUserIdOrName) {
-                        $responsibleUserId = Amo::$info->getUserIdFromIdOrName($responsibleUserIdOrName);
+                        $responsibleUserId = AmoCRM::$info->getUserIdFromIdOrName($responsibleUserIdOrName);
                         $url .= "&responsible_user_id[]=$responsibleUserId";
                     }
                 } else {
-                    $responsibleUserId = Amo::$info->getUserIdFromIdOrName($responsibleUsersIdOrName);
+                    $responsibleUserId = AmoCRM::$info->getUserIdFromIdOrName($responsibleUsersIdOrName);
                     $url .= "&responsible_user_id=$responsibleUserId";
                 }
             }
@@ -422,7 +446,7 @@ class Amo
                 } else {
                     $requestLimit = $totalCount;
                 }
-                $res = Amo::cUrl($url . "&limit_rows=$requestLimit&limit_offset=$offset", null, $modifiedSince);
+                $res = AmoCRM::cUrl($url . "&limit_rows=$requestLimit&limit_offset=$offset", null, $modifiedSince);
                 if ($res === null) {
                     break;
                 } else {
@@ -441,7 +465,7 @@ class Amo
             } else {
                 $baseObjects = array();
                 foreach ($result as $baseRaw) {
-                    /** @var Base $baseObj */
+                    /** @var Company|Contact|Lead|Note|Task $baseObj */
                     $baseObj = new $typeObj();
                     $baseObj->loadInRaw($baseRaw);
                     $baseObjects[] = $baseObj;
@@ -454,6 +478,7 @@ class Amo
 
     /**
      * @param string $directory
+     * @throws AmoWrapException
      */
     public function backup($directory)
     {

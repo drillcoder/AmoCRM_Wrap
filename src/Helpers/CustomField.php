@@ -1,13 +1,15 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 08.09.17
  * Time: 16:50
  */
 
-namespace AmoCRM\Helpers;
-use AmoCRM\Amo;
+namespace DrillCoder\AmoCRM_Wrap\Helpers;
+
+use DrillCoder\AmoCRM_Wrap\AmoCRM;
+use DrillCoder\AmoCRM_Wrap\AmoWrapException;
 
 /**
  * Class CustomField
@@ -61,21 +63,14 @@ class CustomField
     }
 
     /**
-     * @return int
-     */
-    public function getId()
-    {
-        return $this->id;
-    }
-
-    /**
      * @param string $type
      * @param string|int $nameOrId
      * @return int|null
+     * @throws AmoWrapException
      */
     public static function getIdFromNameOrId($type, $nameOrId)
     {
-        $idsCustomFields = Amo::$info->get("id{$type}CustomFields");
+        $idsCustomFields = AmoCRM::getInfo()->get("id{$type}CustomFields");
         if (array_key_exists($nameOrId, $idsCustomFields)) {
             $id = $nameOrId;
         } elseif (in_array($nameOrId, $idsCustomFields)) {
@@ -83,6 +78,14 @@ class CustomField
         } else
             return null;
         return $id;
+    }
+
+    /**
+     * @return int
+     */
+    public function getId()
+    {
+        return $this->id;
     }
 
     /**
@@ -107,18 +110,22 @@ class CustomField
 
     /**
      * @param Value $value
+     * @return CustomField
      */
     public function addValue($value)
     {
         $this->values[] = $value;
+        return $this;
     }
 
     /**
      * @param int $key
+     * @return CustomField
      */
     public function delValue($key)
     {
         unset($this->values[$key]);
+        return $this;
     }
 
     /**

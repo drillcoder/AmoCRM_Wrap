@@ -1,12 +1,13 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 11.09.17
  * Time: 16:07
  */
 
-namespace AmoCRM;
+namespace DrillCoder\AmoCRM_Wrap;
+
 
 /**
  * Class Lead
@@ -32,19 +33,6 @@ class Lead extends Base
     protected $mainContactId;
 
     /**
-     * @return void
-     */
-    protected function setObjType()
-    {
-        $this->objType = array(
-            'elementType' => 2,
-            'info' => 'Lead',
-            'url' => 'leads',
-            'delete' => 'leads',
-        );
-    }
-
-    /**
      * @return array
      */
     protected function getExtraRaw()
@@ -58,6 +46,7 @@ class Lead extends Base
 
     /**
      * @param \stdClass $stdClass
+     * @throws AmoWrapException
      */
     public function loadInRaw($stdClass)
     {
@@ -71,20 +60,6 @@ class Lead extends Base
     }
 
     /**
-     * @return bool
-     */
-    public function delete()
-    {
-        if (parent::delete()) {
-            foreach ($this as $key => $item) {
-                $this->$key = null;
-            }
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * @return int
      */
     public function getSale()
@@ -94,10 +69,12 @@ class Lead extends Base
 
     /**
      * @param int $sale
+     * @return Lead
      */
     public function setSale($sale)
     {
         $this->sale = $sale;
+        return $this;
     }
 
     /**
@@ -110,28 +87,31 @@ class Lead extends Base
 
     /**
      * @return string
+     * @throws AmoWrapException
      */
     public function getStatusName()
     {
-        return Amo::$info->get('pipelines')[$this->pipelineId]['statuses'][$this->statusId]['name'];
+        $pipelines = AmoCRM::getInfo()->get('pipelines');
+        return $pipelines[$this->pipelineId]['statuses'][$this->statusId]['name'];
     }
 
     /**
      * @param int|string $idOrNamePipeline
      * @param int|string $idOrNameStatus
-     * @return bool
+     * @return Lead
+     * @throws AmoWrapException
      */
-    public function setStatus($idOrNamePipeline, $idOrNameStatus)
+    public function setPipelineAndStatus($idOrNamePipeline, $idOrNameStatus)
     {
-        $this->pipelineId = Amo::$info->getPipelineIdFromIdOrName($idOrNamePipeline);
+        $this->pipelineId = AmoCRM::getInfo()->getPipelineIdFromIdOrName($idOrNamePipeline);
         if (empty($this->pipelineId)) {
-            return false;
+            throw new AmoWrapException('Не удалось задать воронку');
         }
-        $this->statusId = Amo::$info->getStatusIdFromStatusIdOrNameAndPipelineIdOrName($this->pipelineId, $idOrNameStatus);
+        $this->statusId = AmoCRM::getInfo()->getStatusIdFromStatusIdOrNameAndPipelineIdOrName($this->pipelineId, $idOrNameStatus);
         if (empty($this->statusId)) {
-            return false;
+            throw new AmoWrapException('Не удалось задать статус');
         }
-        return true;
+        return $this;
     }
 
     /**
@@ -144,10 +124,12 @@ class Lead extends Base
 
     /**
      * @return string
+     * @throws AmoWrapException
      */
     public function getPipelineName()
     {
-        return Amo::$info->get('pipelines')[$this->pipelineId]['name'];
+        $pipelines = AmoCRM::getInfo()->get('pipelines');
+        return $pipelines[$this->pipelineId]['name'];
     }
 
     /**
@@ -159,11 +141,13 @@ class Lead extends Base
     }
 
     /**
-     * @param int $contactId
+     * @param Contact $contact
+     * @return Lead
      */
-    public function setMainContactId($contactId)
+    public function setMainContact($contact)
     {
-        $this->mainContactId = $contactId;
+        $this->mainContactId = $contact->getId();
+        return $this;
     }
 
     /**
@@ -174,45 +158,5 @@ class Lead extends Base
         if ($this->statusId == 142 || $this->statusId == 143)
             return true;
         return false;
-    }
-
-    /**
-     * @param string $text
-     * @param int $type
-     * @return bool
-     */
-    public function addNote($text, $type = 4)
-    {
-        if (empty($this->id)) {
-            $this->save();
-        }
-        return parent::addNote($text, $type);
-    }
-
-    /**
-     * @param string $text
-     * @param \DateTime|null $completeTill
-     * @param int|string $typeId
-     * @param int|string|null $responsibleUserIdOrName
-     * @return bool
-     */
-    public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
-    {
-        if (empty($this->id)) {
-            $this->save();
-        }
-        return parent::addTask($text, $responsibleUserIdOrName, $completeTill, $typeId);
-    }
-
-    /**
-     * @param string $pathToFile
-     * @return bool
-     */
-    public function addFile($pathToFile)
-    {
-        if (empty($this->id)) {
-            $this->save();
-        }
-        return parent::addFile($pathToFile);
     }
 }

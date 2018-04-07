@@ -1,12 +1,13 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 26.09.17
  * Time: 14:31
  */
 
-namespace AmoCRM;
+namespace DrillCoder\AmoCRM_Wrap;
+
 
 /**
  * Class Task
@@ -23,23 +24,15 @@ class Task extends Base
      */
     protected $completeTill;
 
+    /**
+     * Task constructor.
+     * @param null $amoId
+     * @throws AmoWrapException
+     */
     public function __construct($amoId = null)
     {
         parent::__construct($amoId);
         $this->completeTill = new \DateTime();
-    }
-
-    /**
-     * @return void
-     */
-    protected function setObjType()
-    {
-        $this->objType = array(
-            'elementType' => 4,
-            'info' => null,
-            'url' => 'tasks',
-            'delete' => 'tasks',
-        );
     }
 
     /**
@@ -58,23 +51,8 @@ class Task extends Base
     }
 
     /**
-     * @return array
-     */
-    public function getRaw()
-    {
-        return Base::getRawBase($this->getExtraRaw());
-    }
-
-    /**
-     * @return bool
-     */
-    public function save()
-    {
-        return Base::saveBase($this->getExtraRaw());
-    }
-
-    /**
      * @param \stdClass $stdClass
+     * @throws AmoWrapException
      */
     public function loadInRaw($stdClass)
     {
@@ -97,10 +75,12 @@ class Task extends Base
 
     /**
      * @param bool $isComplete
+     * @return Task
      */
     public function setIsComplete($isComplete)
     {
         $this->isComplete = $isComplete;
+        return $this;
     }
 
     /**
@@ -113,9 +93,11 @@ class Task extends Base
 
     /**
      * @param \DateTime $completeTill
+     * @return Task
      */
     public function setCompleteTill($completeTill)
     {
         $this->completeTill = $completeTill;
+        return $this;
     }
 }

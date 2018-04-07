@@ -1,15 +1,16 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 12.09.17
  * Time: 11:55
  */
 
-namespace AmoCRM;
+namespace DrillCoder\AmoCRM_Wrap;
 
-use AmoCRM\Helpers\CustomField;
-use AmoCRM\Helpers\Value;
+use DrillCoder\AmoCRM_Wrap\Helpers\Config;
+use DrillCoder\AmoCRM_Wrap\Helpers\CustomField;
+use DrillCoder\AmoCRM_Wrap\Helpers\Value;
 
 /**
  * Class Base
@@ -93,14 +94,23 @@ abstract class Base
      * @var array
      */
     protected $unlink;
+    /**
+     * @var array
+     */
+    protected $config;
 
     /**
      * Base constructor.
      * @param int|null $amoId
+     * @throws AmoWrapException
      */
     public function __construct($amoId = null)
     {
-        if (Amo::$authorization) {
+        $classNameArray = explode('\\', get_class($this));
+        $className = strtolower(array_pop($classNameArray));
+        $config = new Config();
+        $this->config = $config->$className;
+        if (AmoCRM::isAuthorization()) {
             if (!empty($amoId)) {
                 $amoId = (int)$amoId;
                 $this->loadInAmoId($amoId);
@@ -109,7 +119,8 @@ abstract class Base
     }
 
     /**
-     * @return bool
+     * @return Company|Contact|Lead|Note|Task
+     * @throws AmoWrapException
      */
     public function save()
     {
@@ -118,6 +129,7 @@ abstract class Base
 
     /**
      * @return array
+     * @throws AmoWrapException
      */
     public function getRaw()
     {
@@ -131,44 +143,42 @@ abstract class Base
 
     /**
      * @param array $data
-     * @return bool
+     * @return Base|Company|Contact|Lead|Note|Task
+     * @throws AmoWrapException
      */
     public function saveBase($data = array())
     {
-        if (Amo::$authorization) {
-            if (empty($this->id)) {
-                $method = 'add';
-            } else {
-                $method = 'update';
-            }
-            $requestData[$method] = array($this->getRawBase($data));
-            $typeUrl = self::url;
-            $res = Amo::cUrl("api/v2/$typeUrl", $requestData);
-            if ($method == 'update') {
-                $idRes = $res->_embedded->items[0]->id;
-                if ($idRes == $this->id)
-                    return true;
-            } elseif ($method == 'add') {
-                if (isset($res->_embedded->items[0]->id) && $this->loadInAmoId($res->_embedded->items[0]->id)) {
-                    return true;
-                }
-            }
+        if (empty($this->id)) {
+            $method = 'add';
         } else {
-            echo 'Необходима авторизация в ЦРМ';
+            $method = 'update';
         }
-        return false;
+        $requestData[$method] = array($this->getRawBase($data));
+        $res = AmoCRM::cUrl("api/v2/{$this->config['url']}", $requestData);
+        if ($method == 'update') {
+            $idRes = $res->_embedded->items[0]->id;
+            if ($idRes == $this->id)
+                return $this;
+        } elseif ($method == 'add') {
+            if (isset($res->_embedded->items[0]->id)) {
+                $this->loadInAmoId($res->_embedded->items[0]->id);
+                return $this;
+            }
+        }
+        throw new AmoWrapException('Не удалось сохранить или обновить сущность');
     }
 
     /**
      * @param int $id
-     * @return bool
+     * @return Base|Company|Contact|Lead|Note|Task
+     * @throws AmoWrapException
      */
     protected function loadInAmoId($id)
     {
         if (!empty($id)) {
-            $typeUrl = $this->objType['url'];
+            $typeUrl = $this->config['url'];
             $link = "api/v2/$typeUrl?id=$id";
-            if ($this->objType['info'] == 'Note') {
+            if ($this->config['info'] == 'Note') {
                 $type = null;
                 switch ($this->elementType) {
                     case 1:
@@ -183,17 +193,18 @@ abstract class Base
                 }
                 $link .= "&type=$type";
             }
-            $res = Amo::cUrl($link);
+            $res = AmoCRM::cUrl($link);
             if (!empty($res->_embedded->items[0])) {
                 return $this->loadInRaw($res->_embedded->items[0]);
             }
         }
-        return false;
+        throw new AmoWrapException('Не удалось загрузить сущность');
     }
 
     /**
      * @param \stdClass|array $stdClass
-     * @return bool
+     * @return Base|Company|Contact|Lead|Note|Task
+     * @throws AmoWrapException
      */
     public function loadInRaw($stdClass)
     {
@@ -239,24 +250,28 @@ abstract class Base
                     }
                 }
             }
-            return true;
+            return $this;
         }
-        return false;
+        throw new AmoWrapException('Не удалось загрузить сущность из сырых данных');
     }
 
     /**
-     * @return bool
+     * @return Base|Company|Contact|Lead|Note|Task
+     * @throws AmoWrapException
      */
     public function delete()
     {
-        $typeDelete = $this->objType['delete'];
+        $typeDelete = $this->config['delete'];
         $post = array('ACTION' => 'DELETE', 'ID[]' => $this->id);
         $url = "ajax/$typeDelete/multiple/delete/";
-        $res = Amo::cUrl($url, http_build_query($post), null, true);
+        $res = AmoCRM::cUrl($url, http_build_query($post), null, true);
         if ($res !== null && $res->status == 'success') {
-            return true;
+            foreach ($this as $key => $item) {
+                $this->$key = null;
+            }
+            return $this;
         }
-        return false;
+        throw new AmoWrapException('Не удалось удалить сущность');
     }
 
     /**
@@ -277,10 +292,12 @@ abstract class Base
 
     /**
      * @param string $name
+     * @return Base|Company|Contact|Lead
      */
     public function setName($name)
     {
         $this->name = $name;
+        return $this;
     }
 
     /**
@@ -292,33 +309,27 @@ abstract class Base
     }
 
     /**
-     * @return string|null
+     * @return string
+     * @throws AmoWrapException
      */
     public function getResponsibleUserName()
     {
-        if (Amo::$authorization) {
-            return Amo::$info->get('usersIdAndName')[$this->responsibleUserId];
-        } else {
-            echo 'Необходима авторизация в ЦРМ';
-        }
-        return null;
+        $usersIdAndName = AmoCRM::getInfo()->get('usersIdAndName');
+        return $usersIdAndName[$this->responsibleUserId];
     }
 
     /**
      * @param int|string $responsibleUserIdOrName
-     * @return bool
+     * @return Base|Company|Contact|Lead|Task
+     * @throws AmoWrapException
      */
     public function setResponsibleUser($responsibleUserIdOrName)
     {
-        if (Amo::$authorization) {
-            $this->responsibleUserId = Amo::$info->getUserIdFromIdOrName($responsibleUserIdOrName);
-            if (!empty($this->responsibleUserId)) {
-                return true;
-            }
-        } else {
-            echo 'Необходима авторизация в ЦРМ';
+        $this->responsibleUserId = AmoCRM::getInfo()->getUserIdFromIdOrName($responsibleUserIdOrName);
+        if (!empty($this->responsibleUserId)) {
+            throw new AmoWrapException('Ответственный не найден');
         }
-        return false;
+        return $this;
     }
 
     /**
@@ -330,11 +341,13 @@ abstract class Base
     }
 
     /**
-     * @param int|null $companyId
+     * @param Company|null $company
+     * @return Base|Contact|Lead
      */
-    public function setCompanyId($companyId = null)
+    public function setCompanyId($company = null)
     {
-        $this->companyId = $companyId;
+        $this->companyId = $company !== null ? $company->getId() : $company;
+        return $this;
     }
 
     /**
@@ -347,87 +360,90 @@ abstract class Base
 
     /**
      * @param string $tag
+     * @return Base|Company|Contact|Lead
      */
     public function addTag($tag)
     {
         $this->tags[] = $tag;
+        return $this;
     }
 
     /**
      * @param string $tag
-     * @return bool
+     * @return Base|Company|Contact|Lead
+     * @throws AmoWrapException
      */
     public function delTag($tag)
     {
         $key = array_search($tag, $this->tags);
         if ($key !== false) {
             unset($this->tags[$key]);
-            return true;
+            throw new AmoWrapException('Тэг не найден');
         }
-        return false;
+        return $this;
     }
 
     /**
      * @param string $name
      * @param string $type
      * @return int|false
+     * @throws AmoWrapException
      */
     public function addCustomField($name, $type)
     {
-        if (Amo::$authorization) {
-            $elementType = $this->objType['elementType'];
-            $data['request']['fields']['add'] = array(
-                array(
-                    "name" => $name,
-                    "type" => $type,
-                    "element_type" => $elementType,
-                    "origin" => 'AmoCRM Wrap'
-                )
-            );
-            $res = Amo::cUrl('private/api/v2/json/fields/set', $data);
-            if ($res !== null)
-                return $res->fields->add[0]->id;
-        } else {
-            echo 'Необходима авторизация в ЦРМ';
+        $elementType = $this->config['elementType'];
+        $data['request']['fields']['add'] = array(
+            array(
+                "name" => $name,
+                "type" => $type,
+                "element_type" => $elementType,
+                "origin" => 'AmoCRM Wrap'
+            )
+        );
+        $res = AmoCRM::cUrl('private/api/v2/json/fields/set', $data);
+        if ($res !== null) {
+            return $res->fields->add[0]->id;
         }
-        return false;
+        throw new AmoWrapException('Не удалось добавить пользовательское поле');
     }
 
     /**
      * @param int|string $nameOrId
-     * @return bool
+     * @return Base|Company|Contact|Lead
+     * @throws AmoWrapException
      */
     public function delCustomField($nameOrId)
     {
-        if (Amo::$authorization) {
-            $id = CustomField::getIdFromNameOrId($this->objType['info'], $nameOrId);
-            if (empty($id))
-                return false;
-            $data['request']['fields']['delete'] = array(
-                array(
-                    "id" => $id,
-                    "origin" => 'AmoCRM Wrap'
-                )
-            );
-            $res = Amo::cUrl('private/api/v2/json/fields/set', $data);
-            if ($res !== null)
-                return $res->fields->delete[0]->id == $id;
-        } else {
-            echo 'Необходима авторизация в ЦРМ';
+        $id = CustomField::getIdFromNameOrId($this->config['info'], $nameOrId);
+        if (empty($id)) {
+            throw new AmoWrapException('Не удалось найти id пользовательского поля');
         }
-        return false;
+        $data['request']['fields']['delete'] = array(
+            array(
+                "id" => $id,
+                "origin" => 'AmoCRM Wrap'
+            )
+        );
+        $res = AmoCRM::cUrl('private/api/v2/json/fields/set', $data);
+        if ($res !== null) {
+            if ($res->fields->delete[0]->id == $id) {
+                return $this;
+            }
+        }
+        throw new AmoWrapException('Не удалось удалить пользовательское поле');
     }
 
 
     /**
      * @param string|int $nameOrId
      * @return string
+     * @throws AmoWrapException
      */
     public function getCustomFieldValue($nameOrId)
     {
         $values = array();
-        if (Amo::$authorization) {
-            $id = CustomField::getIdFromNameOrId($this->objType['info'], $nameOrId);
+        if (AmoCRM::isAuthorization()) {
+            $id = CustomField::getIdFromNameOrId($this->config['info'], $nameOrId);
             if (array_key_exists($id, $this->customFields)) {
                 foreach ($this->customFields[$id]->getValues() as $value) {
                     $values[] = $value->getValue();
@@ -470,48 +486,46 @@ abstract class Base
     /**
      * @param string|int $nameOrId
      * @param string $values
-     * @return bool
+     * @return Base|Company|Contact|Lead
+     * @throws AmoWrapException
      */
     public function setCustomField($nameOrId, $values)
     {
-        if (Amo::$authorization) {
-            $type = $this->objType['info'];
-            $idCustomFields = Amo::$info->get("id{$type}CustomFields");
-            if (array_key_exists($nameOrId, $idCustomFields)) {
-                $id = $nameOrId;
-                $name = $idCustomFields[$nameOrId];
-            } elseif (in_array($nameOrId, $idCustomFields)) {
-                $id = array_search($nameOrId, $idCustomFields);
-                $name = $nameOrId;
-            } else {
-                return false;
-            }
-            if (!empty($id)) {
-                if (empty($values)) {
-                    if (array_key_exists($id, $this->customFields)) {
-                        $this->customFields[$id]->delAllValues();
-                    }
-                } else {
-                    $values = explode(';', $values);
-                    $valueObj = array();
-                    foreach ($values as $value) {
-                        $value = trim($value);
-                        if (isset(Amo::$info->get("id{$type}CustomFieldsEnums")[$id])) {
-                            $enum = array_search($value, Amo::$info->get("id{$type}CustomFieldsEnums")[$id]);
-                        } else {
-                            $enum = null;
-                        }
-                        $valueObj[] = new Value($value, $enum);
-                    }
-                    $customFieldObj = new CustomField($id, $valueObj, $name);
-                    $this->customFields[$customFieldObj->getId()] = $customFieldObj;
-                    return true;
-                }
-            }
+        $type = $this->config['info'];
+        $idCustomFields = AmoCRM::getInfo()->get("id{$type}CustomFields");
+        if (array_key_exists($nameOrId, $idCustomFields)) {
+            $id = $nameOrId;
+            $name = $idCustomFields[$nameOrId];
+        } elseif (in_array($nameOrId, $idCustomFields)) {
+            $id = array_search($nameOrId, $idCustomFields);
+            $name = $nameOrId;
         } else {
-            echo 'Необходима авторизация в ЦРМ';
+            throw new AmoWrapException('Не найти пользовательское поле');
         }
-        return false;
+        if (!empty($id)) {
+            if (empty($values)) {
+                if (array_key_exists($id, $this->customFields)) {
+                    $this->customFields[$id]->delAllValues();
+                }
+            } else {
+                $values = explode(';', $values);
+                $valueObj = array();
+                foreach ($values as $value) {
+                    $value = trim($value);
+                    $idTypeCustomFieldsEnums = AmoCRM::getInfo()->get("id{$type}CustomFieldsEnums");
+                    if (isset($idTypeCustomFieldsEnums[$id])) {
+                        $enum = array_search($value, $idTypeCustomFieldsEnums[$id]);
+                    } else {
+                        $enum = null;
+                    }
+                    $valueObj[] = new Value($value, $enum);
+                }
+                $customFieldObj = new CustomField($id, $valueObj, $name);
+                $this->customFields[$customFieldObj->getId()] = $customFieldObj;
+                return $this;
+            }
+        }
+        throw new AmoWrapException('Не удалось задать значение пользовательскому полю');
     }
 
     /**
@@ -524,10 +538,12 @@ abstract class Base
 
     /**
      * @param int $elementId
+     * @return Base|Note|Task
      */
     public function setElementId($elementId)
     {
         $this->elementId = $elementId;
+        return $this;
     }
 
     /**
@@ -540,10 +556,12 @@ abstract class Base
 
     /**
      * @param int $elementType
+     * @return Base|Note|Task
      */
     public function setElementType($elementType)
     {
         $this->elementType = $elementType;
+        return $this;
     }
 
     /**
@@ -556,10 +574,12 @@ abstract class Base
 
     /**
      * @param string $text
+     * @return Base|Note|Task
      */
     public function setText($text)
     {
         $this->text = $text;
+        return $this;
     }
 
     /**
@@ -572,10 +592,12 @@ abstract class Base
 
     /**
      * @param int|string $type
+     * @return Base|Note|Task
      */
     public function setType($type)
     {
         $this->type = $type;
+        return $this;
     }
 
     /**
@@ -604,15 +626,12 @@ abstract class Base
 
     /**
      * @return string
+     * @throws AmoWrapException
      */
     public function getUserNameUpdate()
     {
-        if (Amo::$authorization) {
-            return Amo::$info->get('usersIdAndName')[$this->userIdUpdate];
-        } else {
-            echo 'Необходима авторизация в ЦРМ';
-        }
-        return '';
+        $usersIdAndName = AmoCRM::getInfo()->get('usersIdAndName');
+        return $usersIdAndName[$this->userIdUpdate];
     }
 
     /**
@@ -625,15 +644,12 @@ abstract class Base
 
     /**
      * @return string
+     * @throws AmoWrapException
      */
     public function getCreatedUserName()
     {
-        if (Amo::$authorization) {
-            return Amo::$info->get('usersIdAndName')[$this->createdUserId];
-        } else {
-            echo 'Необходима авторизация в ЦРМ';
-        }
-        return '';
+        $usersIdAndName = AmoCRM::getInfo()->get('usersIdAndName');
+        return $usersIdAndName[$this->createdUserId];
     }
 
     /**
@@ -645,28 +661,31 @@ abstract class Base
     }
 
     /**
-     * @param int $leadId
+     * @param Lead $lead
+     * @return Base|Company|Contact
      */
-    public function addLeadId($leadId)
+    public function addLead(Lead $lead)
     {
-        $this->leadsId[] = $leadId;
+        $this->leadsId[] = $lead->getId();
+        return $this;
     }
 
     /**
-     * @param int $leadId
-     * @return bool
+     * @param Lead $lead
+     * @return Base|Company|Contact
+     * @throws AmoWrapException
      */
-    public function delLeadId($leadId)
+    public function delLeadId(Lead $lead)
     {
-        $delKeys = array_keys($this->leadsId, $leadId);
-        if (!empty($delKeys)) {
+        $delKeys = array_keys($this->leadsId, $lead->getId());
+        if (count($delKeys) > 0) {
             foreach ($delKeys as $delKey) {
                 unset($this->leadsId[$delKey]);
             }
-            $this->unlink['leads_id'][] = $leadId;
-            return true;
+            $this->unlink['leads_id'][] = $lead->getId();
+            return $this;
         }
-        return false;
+        throw new AmoWrapException('Не найден id сделки');
     }
 
     /**
@@ -682,28 +701,31 @@ abstract class Base
     }
 
     /**
-     * @param int $contactId
+     * @param Contact $contact
+     * @return Base|Company|Lead
      */
-    public function addContactId($contactId)
+    public function addContactId(Contact $contact)
     {
-        $this->contactsId[] = $contactId;
+        $this->contactsId[] = $contact->getId();
+        return $this;
     }
 
     /**
-     * @param int $contactId
-     * @return bool
+     * @param Contact $contact
+     * @return Base|Company|Lead
+     * @throws AmoWrapException
      */
-    public function delContactId($contactId)
+    public function delContactId(Contact$contact)
     {
-        $delKeys = array_keys($this->contactsId, $contactId);
+        $delKeys = array_keys($this->contactsId, $contact->getId());
         if (!empty($delKeys)) {
             foreach ($delKeys as $delKey) {
                 unset($this->contactsId[$delKey]);
             }
-            $this->unlink['contacts_id'][] = $contactId;
-            return true;
+            $this->unlink['contacts_id'][] = $contact->getId();
+            return $this;
         }
-        return false;
+        throw new AmoWrapException('Не найден id контакта');
     }
 
     /**
@@ -721,46 +743,48 @@ abstract class Base
     /**
      * @param string $phone
      * @param string $enum
-     * @return bool
+     * @return Base|Company|Contact
+     * @throws AmoWrapException
      */
     public function addPhone($phone, $enum = 'OTHER')
     {
         $enum = mb_strtoupper($enum);
         if (!empty($this->phones)) {
             foreach ($this->phones as $value) {
-                if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone)) {
-                    return true;
+                if (AmoCRM::clearPhone($value->getValue()) == AmoCRM::clearPhone($phone)) {
+                    return $this;
                 }
             }
         }
-        if (Amo::$authorization) {
-            $idPhoneEnums = Amo::$info->get('idPhoneEnums');
+        if (AmoCRM::isAuthorization()) {
+            $idPhoneEnums = AmoCRM::getInfo()->get('idPhoneEnums');
             if (array_key_exists($enum, $idPhoneEnums)) {
                 $this->phones[] = new Value($phone, $idPhoneEnums[$enum]);
-                return true;
+                return $this;
             }
         } else {
             $this->phones[] = new Value($phone);
-            return true;
+            return $this;
         }
-        return false;
+        throw new AmoWrapException('Не удалось добавить телефон');
     }
 
     /**
      * @param string $phone
-     * @return bool
+     * @return Base|Company|Contact
+     * @throws AmoWrapException
      */
     public function delPhone($phone)
     {
         if (!empty($this->phones)) {
             foreach ($this->phones as $key => $value) {
-                if (Amo::clearPhone($value->getValue()) == Amo::clearPhone($phone)) {
+                if (AmoCRM::clearPhone($value->getValue()) == AmoCRM::clearPhone($phone)) {
                     unset($this->phones[$key]);
-                    return true;
+                    return $this;
                 }
             }
         }
-        return false;
+        throw new AmoWrapException('Не удалось удалить телефон');
     }
 
     /**
@@ -778,7 +802,8 @@ abstract class Base
     /**
      * @param string $email
      * @param string $enum
-     * @return bool
+     * @return Base|Company|Contact
+     * @throws AmoWrapException
      */
     public function addEmail($email, $enum = 'OTHER')
     {
@@ -787,25 +812,26 @@ abstract class Base
         if (!empty($this->emails)) {
             foreach ($this->emails as $value) {
                 if (mb_strtolower($value->getValue()) == $email)
-                    return true;
+                    return $this;
             }
         }
-        if (Amo::$authorization) {
-            $idEmailEnums = Amo::$info->get('idEmailEnums');
+        if (AmoCRM::isAuthorization()) {
+            $idEmailEnums = AmoCRM::getInfo()->get('idEmailEnums');
             if (array_key_exists($enum, $idEmailEnums)) {
                 $this->emails[] = new Value($email, $idEmailEnums[$enum]);
-                return true;
+                return $this;
             }
         } else {
             $this->emails[] = new Value($email);
-            return true;
+            return $this;
         }
-        return false;
+        throw new AmoWrapException('Не удалось добавить почту');
     }
 
     /**
      * @param string $email
-     * @return bool
+     * @return Base|Company|Contact
+     * @throws AmoWrapException
      */
     public function delEmail($email)
     {
@@ -814,16 +840,17 @@ abstract class Base
             foreach ($this->emails as $key => $value) {
                 if (mb_strtolower($value->getValue()) == $email) {
                     unset($this->emails[$key]);
-                    return true;
+                    return $this;
                 }
             }
         }
-        return false;
+        throw new AmoWrapException('Не удалось удалить почту');
     }
 
     /**
      * @param array $data
      * @return array
+     * @throws AmoWrapException
      */
     public function getRawBase($data = array())
     {
@@ -855,27 +882,26 @@ abstract class Base
         }
         $customFields = $this->customFields;
         if (!empty($this->phones)) {
-            $idPhoneEnums = Amo::$info->get('idPhoneEnums');
+            $idPhoneEnums = AmoCRM::getInfo()->get('idPhoneEnums');
             foreach ($this->phones as &$phone) {
                 if ($phone->getEnum() === 0) {
                     $phone->setEnum($idPhoneEnums['OTHER']);
                 }
             }
-            $customFieldPhone = new CustomField(Amo::$info->get('phoneFieldId'), $this->phones);
+            $customFieldPhone = new CustomField(AmoCRM::getInfo()->get('phoneFieldId'), $this->phones);
             $customFields[] = $customFieldPhone;
         }
         if (!empty($this->emails)) {
-            $idEmailEnums = Amo::$info->get('idEmailEnums');
+            $idEmailEnums = AmoCRM::getInfo()->get('idEmailEnums');
             foreach ($this->emails as &$email) {
                 if ($email->getEnum() === 0) {
                     $email->setEnum($idEmailEnums['OTHER']);
                 }
             }
-            $customFieldEmail = new CustomField(Amo::$info->get('emailFieldId'), $this->emails);
+            $customFieldEmail = new CustomField(AmoCRM::getInfo()->get('emailFieldId'), $this->emails);
             $customFields[] = $customFieldEmail;
         }
         if (!empty($customFields)) {
-            /** @var CustomField $customFieldObj */
             foreach ($customFields as $customFieldObj) {
                 $customField = array(
                     'id' => $customFieldObj->getId(),
@@ -899,79 +925,93 @@ abstract class Base
     /**
      * @param string $text
      * @param int $type
-     * @return bool
+     * @return Base|Company|Contact|Lead
+     * @throws AmoWrapException
      */
     public function addNote($text, $type = 4)
     {
+        if (empty($this->amoId)) {
+            $this->save();
+        }
         $note = new Note();
-        $note->setText($text);
-        $note->setType($type);
-        $note->setElementId($this->id);
-        $note->setElementType($this->objType['elementType']);
-        return $note->save();
+        $note->setText($text)
+            ->setType($type)
+            ->setElementId($this->id)
+            ->setElementType($this->config['elementType'])
+            ->save();
+        return $this;
     }
 
     /**
      * @param string $text
      * @param string $serviceName
-     * @return bool
+     * @return Base|Company|Contact|Lead
+     * @throws AmoWrapException
      */
     public function addSystemNote($text, $serviceName)
     {
+        if (empty($this->amoId)) {
+            $this->save();
+        }
         $note = new Note();
-        $note->setText($text);
-        $note->setType(25);
-        $note->setService($serviceName);
-        $note->setElementId($this->id);
-        $note->setElementType($this->objType['elementType']);
-        return $note->save();
+        $note->setText($text)
+            ->setType(25)
+            ->setService($serviceName)
+            ->setElementId($this->id)
+            ->setElementType($this->config['elementType'])
+            ->save();
+        return $this;
+
     }
 
     /**
      * @param string $text
+     * @param int|string|null $responsibleUserIdOrName
      * @param \DateTime|null $completeTill
      * @param int|string $typeId
-     * @param int|string|null $responsibleUserIdOrName
-     * @return bool
+     * @return Base|Company|Contact|Lead
+     * @throws AmoWrapException
      */
     public function addTask($text, $responsibleUserIdOrName = null, $completeTill = null, $typeId = 3)
     {
+        if (empty($this->amoId)) {
+            $this->save();
+        }
         if ($responsibleUserIdOrName === null) {
             $responsibleUserIdOrName = $this->responsibleUserId;
         }
         $task = new Task();
-        $task->setText($text);
         if ($completeTill !== null) {
             $task->setCompleteTill($completeTill);
         }
-        if (Amo::$authorization) {
-            $types = Amo::$info->get('taskTypes');
-            if (in_array($typeId, $types)) {
-                $typeId = array_search($typeId, $types);
-            }
-        } else {
-            $typeId = 3;
+        if (!in_array($typeId, AmoCRM::getInfo()->get('taskTypes'))) {
+            throw new AmoWrapException('Не удалось найти тип задачи');
         }
-        $task->setType($typeId);
-        $task->setResponsibleUser($responsibleUserIdOrName);
-        $task->setElementId($this->id);
-        $task->setElementType($this->objType['elementType']);
-        $task->save();
-        return true;
+        $task->setText($text)
+            ->setType($typeId)
+            ->setResponsibleUser($responsibleUserIdOrName)
+            ->setElementId($this->id)
+            ->setElementType($this->config['elementType'])
+            ->save();
+        return $this;
     }
 
     /**
      * @param string $pathToFile
-     * @return bool
+     * @return Base|Company|Contact|Lead
+     * @throws AmoWrapException
      */
     public function addFile($pathToFile)
     {
+        if (empty($this->amoId)) {
+            $this->save();
+        }
         if (is_file($pathToFile) && file_exists($pathToFile)) {
-            $elementType = $this->objType['elementType'];
+            $elementType = $this->config['elementType'];
             if (class_exists('CURLFile')) {
-                $cfile = new \CURLFile(realpath($pathToFile));
+                $CURLFile = new \CURLFile(realpath($pathToFile));
                 $post = array(
-                    'UserFile' => $cfile
+                    'UserFile' => $CURLFile
                 );
             } else {
                 $post = array(
@@ -979,10 +1019,10 @@ abstract class Base
                 );
             }
             $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID=" . $this->id . "&ELEMENT_TYPE=" .
-                $elementType . "&fileapi" . str_replace(".", "", microtime(true));
-            $res = Amo::cUrl($url, $post, null, true);
+                $elementType . "&file" . "api" . str_replace(".", "", microtime(true));
+            $res = AmoCRM::cUrl($url, $post, null, true);
             if (isset($res->status) && $res->status == 'fail') {
-                return false;
+                throw new AmoWrapException('Не удалось добавить файл');
             }
             $post = array(
                 'ACTION' => "ADD_NOTE",
@@ -992,11 +1032,11 @@ abstract class Base
                 'ELEMENT_ID' => $this->id,
                 'ELEMENT_TYPE' => $elementType,
             );
-            $res = Amo::cUrl("private/notes/edit2.php", $post, null, true);
+            $res = AmoCRM::cUrl("private/notes/edit2.php", $post, null, true);
             if (isset($res->status) && $res->status == 'ok') {
-                return true;
+                return $this;
             }
         }
-        return false;
+        throw new AmoWrapException('Не удалось добавить файл');
     }
 }

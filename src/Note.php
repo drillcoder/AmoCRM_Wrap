@@ -1,12 +1,13 @@
 <?php
 /**
  * Created by PhpStorm.
- * User: drillphoto
+ * User: DrillCoder
  * Date: 17.09.17
  * Time: 20:28
  */
 
-namespace AmoCRM;
+namespace DrillCoder\AmoCRM_Wrap;
+
 
 /**
  * Class Note
@@ -33,19 +34,6 @@ class Note extends Base
     protected $service;
 
     /**
-     * @return void
-     */
-    protected function setObjType()
-    {
-        $this->objType = array(
-            'elementType' => null,
-            'info' => 'Note',
-            'url' => 'notes',
-            'delete' => 'notes',
-        );
-    }
-
-    /**
      * @return array
      */
     protected function getExtraRaw()
@@ -63,24 +51,8 @@ class Note extends Base
     }
 
     /**
-     * @return array
-     */
-    public function getRaw()
-    {
-        return Base::getRawBase($this->getExtraRaw());
-    }
-
-    /**
-     * @return bool
-     */
-    public function save()
-    {
-
-        return Base::saveBase($this->getExtraRaw());
-    }
-
-    /**
      * @param \stdClass $stdClass
+     * @throws AmoWrapException
      */
     public function loadInRaw($stdClass)
     {
@@ -94,7 +66,7 @@ class Note extends Base
     }
 
     /**
-     * @return boolean
+     * @return bool
      */
     public function isEditable()
     {
@@ -111,17 +83,21 @@ class Note extends Base
 
     /**
      * @param string $attachment
+     * @return Note
      */
     public function setAttachment($attachment)
     {
         $this->attachment = $attachment;
+        return $this;
     }
 
     /**
      * @param string $service
+     * @return Note
      */
     public function setService($service)
     {
         $this->service = $service;
+        return $this;
     }
 }
