@@ -1,7 +1,7 @@
 {
   "name": "drillcoder/amocrm_wrap",
   "description": "Обёртка для простого взаимодействия с Api AmoCRM",
-  "version": "6.0",
+  "version": "6.0.1",
   "keywords": [
     "drillcoder",
     "amo",
