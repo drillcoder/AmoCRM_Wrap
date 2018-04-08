@@ -15,14 +15,14 @@ use DrillCoder\AmoCRM_Wrap\Helpers\Info;
 /**
  * Class Amo
  * @package AmoCRM
- * @version Version 6.0.1
+ * @version Version 6.0.2
  */
 class AmoCRM
 {
     /**
      * Wrap Version
      */
-    const VERSION = '6.0.1';
+    const VERSION = '6.0.2';
     /**
      * @var string
      */
