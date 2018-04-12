@@ -326,7 +326,7 @@ abstract class Base
     public function setResponsibleUser($responsibleUserIdOrName)
     {
         $this->responsibleUserId = AmoCRM::getInfo()->getUserIdFromIdOrName($responsibleUserIdOrName);
-        if (!empty($this->responsibleUserId)) {
+        if (empty($this->responsibleUserId)) {
             throw new AmoWrapException('Ответственный не найден');
         }
         return $this;
