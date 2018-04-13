@@ -203,7 +203,7 @@ abstract class Base
 
     /**
      * @param \stdClass|array $stdClass
-     * @return Base|Company|Contact|Lead|Note|Task
+     * @return Base|Company|Contact
      * @throws AmoWrapException
      */
     public function loadInRaw($stdClass)

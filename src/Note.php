@@ -52,6 +52,7 @@ class Note extends Base
 
     /**
      * @param \stdClass $stdClass
+     * @return Note
      * @throws AmoWrapException
      */
     public function loadInRaw($stdClass)
@@ -63,6 +64,7 @@ class Note extends Base
         $this->text = $stdClass->text;
         $this->editable = $stdClass->is_editable;
         $this->attachment = $stdClass->attachment;
+        return $this;
     }
 
     /**

@@ -52,6 +52,7 @@ class Task extends Base
 
     /**
      * @param \stdClass $stdClass
+     * @return Task
      * @throws AmoWrapException
      */
     public function loadInRaw($stdClass)
@@ -63,6 +64,7 @@ class Task extends Base
         $this->text = $stdClass->text;
         $this->isComplete = $stdClass->is_completed;
         $this->completeTill->setTimestamp($stdClass->complete_till_at);
+        return $this;
     }
 
     /**

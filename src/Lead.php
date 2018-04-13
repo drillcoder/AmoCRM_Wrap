@@ -46,6 +46,7 @@ class Lead extends Base
 
     /**
      * @param \stdClass $stdClass
+     * @return Lead
      * @throws AmoWrapException
      */
     public function loadInRaw($stdClass)
@@ -57,6 +58,7 @@ class Lead extends Base
         if (isset($stdClass->main_contact->id)) {
             $this->mainContactId = (int)$stdClass->main_contact->id;
         }
+        return $this;
     }
 
     /**
