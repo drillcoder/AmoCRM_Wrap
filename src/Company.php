@@ -11,7 +11,7 @@ namespace DrillCoder\AmoCRM_Wrap;
 
 /**
  * Class Company
- * @package AmoCRM
+ * @package DrillCoder\AmoCRM_Wrap
  */
 class Company extends Base
 {

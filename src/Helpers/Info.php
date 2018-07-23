@@ -11,7 +11,7 @@ use DrillCoder\AmoCRM_Wrap\AmoWrapException;
 
 /**
  * Class Info
- * @package AmoCRM\Helpers
+ * @package DrillCoder\AmoCRM_Wrap\Helpers
  */
 class Info
 {

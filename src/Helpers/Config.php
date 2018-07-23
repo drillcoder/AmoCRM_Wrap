@@ -11,7 +11,7 @@ namespace DrillCoder\AmoCRM_Wrap\Helpers;
 
 /**
  * Class Config
- * @package AmoCRM\Helpers
+ * @package DrillCoder\AmoCRM_Wrap\Helpers
  */
 class Config
 {

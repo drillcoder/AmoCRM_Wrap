@@ -14,7 +14,7 @@ use DrillCoder\AmoCRM_Wrap\Helpers\Info;
 
 /**
  * Class Amo
- * @package AmoCRM
+ * @package DrillCoder\AmoCRM_Wrap
  * @version Version 6.0.4
  */
 class AmoCRM
@@ -43,15 +43,6 @@ class AmoCRM
      * @var Info
      */
     private static $info;
-
-    /**
-     * @param string $phone
-     * @return integer
-     */
-    public static function clearPhone($phone)
-    {
-        return preg_replace("/[^0-9]/", '', $phone);
-    }
 
     /**
      * Amo constructor.
@@ -94,7 +85,7 @@ class AmoCRM
             $url = 'https://' . self::$domain . '.amocrm.ru/' . $url;
             $isUnsorted = stripos($url, 'incoming_leads') !== false;
             if ($isUnsorted) {
-                $url .= '?login=' . self::$userLogin . '&api_key=' . self::$userAPIKey;
+                $url .= '&login=' . self::$userLogin . '&api_key=' . self::$userAPIKey;
             } else {
                 if (strripos($url, '?') === false) {
                     $url .= '?';
@@ -179,7 +170,9 @@ class AmoCRM
                 foreach ($res->_embedded->items as $raw) {
                     $contact = new Contact();
                     $contact->loadInRaw($raw);
-                    $contacts[$contact->getId()] = $contact;
+                    if (in_array($phone, $contact->getPhones())) {
+                        $contacts[$contact->getId()] = $contact;
+                    }
                 }
             }
         }
@@ -190,11 +183,22 @@ class AmoCRM
                 foreach ($res->_embedded->items as $raw) {
                     $contact = new Contact();
                     $contact->loadInRaw($raw);
-                    $contacts[$contact->getId()] = $contact;
+                    if (in_array($email, $contact->getEmails())) {
+                        $contacts[$contact->getId()] = $contact;
+                    }
                 }
             }
         }
         return $contacts;
+    }
+
+    /**
+     * @param string $phone
+     * @return integer
+     */
+    public static function clearPhone($phone)
+    {
+        return preg_replace("/[^0-9]/", '', $phone);
     }
 
     /**
@@ -236,6 +240,45 @@ class AmoCRM
     }
 
     /**
+     * @param string $directory
+     * @throws AmoWrapException
+     */
+    public function backup($directory)
+    {
+        $this->createBackupFile($directory, 'contacts.backup', $this->getContactsList(null, 0,
+            0, array(), null, true));
+        $this->createBackupFile($directory, 'leads.backup', $this->getLeadsList(null, 0, 0,
+            array(), null, true));
+        $this->createBackupFile($directory, 'company.backup', $this->getCompanyList(null, 0, 0,
+            array(), null, true));
+        $this->createBackupFile($directory, 'tasks.backup', $this->getTasksList(null, 0, 0,
+            array(), null, true));
+        $this->createBackupFile($directory, 'notes-contacts.backup', $this->notesContactList(null,
+            0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-leads.backup', $this->getNotesLeadList(null, 0,
+            0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-company.backup', $this->getNotesCompanyList(null,
+            0, 0, array(), null, true));
+        $this->createBackupFile($directory, 'notes-tasks.backup', $this->getNotesTaskList(null, 0,
+            0, array(), null, true));
+    }
+
+    /**
+     * @param string $directory
+     * @param string $nameFile
+     * @param mixed $var
+     */
+    private function createBackupFile($directory, $nameFile, $var)
+    {
+        if (!is_dir($directory)) {
+            mkdir($directory, 0777, true);
+        }
+        $f = fopen("$directory/$nameFile", 'w+');
+        fwrite($f, serialize($var));
+        fclose($f);
+    }
+
+    /**
      * @param null $query
      * @param int $limit
      * @param int $offset
@@ -245,122 +288,10 @@ class AmoCRM
      * @return Contact[]|\stdClass[]
      * @throws AmoWrapException
      */
-    public function contactsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                                 \DateTime $modifiedSince = null, $isRaw = false)
+    public function getContactsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                    \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
-    }
-
-    /**
-     * @param null $query
-     * @param int $limit
-     * @param int $offset
-     * @param array|string|int $responsibleUsersIdOrName
-     * @param \DateTime|null $modifiedSince
-     * @param bool $isRaw
-     * @return Lead[]|\stdClass[]
-     * @throws AmoWrapException
-     */
-    public function leadsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                              \DateTime $modifiedSince = null, $isRaw = false)
-    {
-        return $this->getList('Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
-    }
-
-    /**
-     * @param null $query
-     * @param int $limit
-     * @param int $offset
-     * @param array|string|int $responsibleUsersIdOrName
-     * @param \DateTime|null $modifiedSince
-     * @param bool $isRaw
-     * @return Company[]|\stdClass[]
-     * @throws AmoWrapException
-     */
-    public function companyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                                \DateTime $modifiedSince = null, $isRaw = false)
-    {
-        return $this->getList('Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
-    }
-
-    /**
-     * @param null $query
-     * @param int $limit
-     * @param int $offset
-     * @param array|string|int $responsibleUsersIdOrName
-     * @param \DateTime|null $modifiedSince
-     * @param bool $isRaw
-     * @return Task[]|\stdClass[]
-     * @throws AmoWrapException
-     */
-    public function tasksList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                              \DateTime $modifiedSince = null, $isRaw = false)
-    {
-        return $this->getList('Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
-    }
-
-    /**
-     * @param null $query
-     * @param int $limit
-     * @param int $offset
-     * @param array|string|int $responsibleUsersIdOrName
-     * @param \DateTime|null $modifiedSince
-     * @param bool $isRaw
-     * @return Note[]|\stdClass[]
-     * @throws AmoWrapException
-     */
-    public function notesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                                     \DateTime $modifiedSince = null, $isRaw = false)
-    {
-        return $this->getList('Note-Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
-    }
-
-    /**
-     * @param null $query
-     * @param int $limit
-     * @param int $offset
-     * @param array|string|int $responsibleUsersIdOrName
-     * @param \DateTime|null $modifiedSince
-     * @param bool $isRaw
-     * @return Note[]|\stdClass[]
-     * @throws AmoWrapException
-     */
-    public function notesLeadList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                                  \DateTime $modifiedSince = null, $isRaw = false)
-    {
-        return $this->getList('Note-Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
-    }
-
-    /**
-     * @param null $query
-     * @param int $limit
-     * @param int $offset
-     * @param array|string|int $responsibleUsersIdOrName
-     * @param \DateTime|null $modifiedSince
-     * @param bool $isRaw
-     * @return Note[]|\stdClass[]
-     * @throws AmoWrapException
-     */
-    public function notesCompanyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                                     \DateTime $modifiedSince = null, $isRaw = false)
-    {
-        return $this->getList('Note-Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
-    }
-
-    /**
-     * @param null $query
-     * @param int $limit
-     * @param int $offset
-     * @param array|string|int $responsibleUsersIdOrName
-     * @param \DateTime|null $modifiedSince
-     * @param bool $isRaw
-     * @return Note[]|\stdClass[]
-     * @throws AmoWrapException
-     */
-    public function notesTaskList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                                  \DateTime $modifiedSince = null, $isRaw = false)
-    {
-        return $this->getList('Note-Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
@@ -414,7 +345,7 @@ class AmoCRM
         if (isset($className)) {
             $typeObj = "AmoCRM\\$className";
             $config = new Config();
-            $typeForUrl = $config->{strtolower($className)};
+            $typeForUrl = $config->{strtolower($className)}['url'];
             $url = "api/v2/$typeForUrl?";
             if (!empty($query)) {
                 $url .= "&query=$query";
@@ -477,41 +408,114 @@ class AmoCRM
     }
 
     /**
-     * @param string $directory
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array|string|int $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
+     * @return Lead[]|\stdClass[]
      * @throws AmoWrapException
      */
-    public function backup($directory)
+    public function getLeadsList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                 \DateTime $modifiedSince = null, $isRaw = false)
     {
-        $this->createBackupFile($directory, 'contacts.backup', $this->contactsList(null, 0,
-            0, array(), null, true));
-        $this->createBackupFile($directory, 'leads.backup', $this->leadsList(null, 0, 0,
-            array(), null, true));
-        $this->createBackupFile($directory, 'company.backup', $this->companyList(null, 0, 0,
-            array(), null, true));
-        $this->createBackupFile($directory, 'tasks.backup', $this->tasksList(null, 0, 0,
-            array(), null, true));
-        $this->createBackupFile($directory, 'notes-contacts.backup', $this->notesContactList(null,
-            0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'notes-leads.backup', $this->notesLeadList(null, 0,
-            0, array(), null, true));
-        $this->createBackupFile($directory, 'notes-company.backup', $this->notesCompanyList(null,
-            0, 0, array(), null, true));
-        $this->createBackupFile($directory, 'notes-tasks.backup', $this->notesTaskList(null, 0,
-            0, array(), null, true));
+        return $this->getList('Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 
     /**
-     * @param string $directory
-     * @param string $nameFile
-     * @param mixed $var
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array|string|int $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
+     * @return Company[]|\stdClass[]
+     * @throws AmoWrapException
      */
-    private function createBackupFile($directory, $nameFile, $var)
+    public function getCompanyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                   \DateTime $modifiedSince = null, $isRaw = false)
     {
-        if (!is_dir($directory)) {
-            mkdir($directory, 0777, true);
-        }
-        $f = fopen("$directory/$nameFile", 'w+');
-        fwrite($f, serialize($var));
-        fclose($f);
+        return $this->getList('Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array|string|int $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
+     * @return Task[]|\stdClass[]
+     * @throws AmoWrapException
+     */
+    public function getTasksList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                 \DateTime $modifiedSince = null, $isRaw = false)
+    {
+        return $this->getList('Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array|string|int $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
+     * @return Note[]|\stdClass[]
+     * @throws AmoWrapException
+     */
+    public function notesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                     \DateTime $modifiedSince = null, $isRaw = false)
+    {
+        return $this->getList('Note-Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array|string|int $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
+     * @return Note[]|\stdClass[]
+     * @throws AmoWrapException
+     */
+    public function getNotesLeadList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                     \DateTime $modifiedSince = null, $isRaw = false)
+    {
+        return $this->getList('Note-Lead', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array|string|int $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
+     * @return Note[]|\stdClass[]
+     * @throws AmoWrapException
+     */
+    public function getNotesCompanyList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                        \DateTime $modifiedSince = null, $isRaw = false)
+    {
+        return $this->getList('Note-Company', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
+    }
+
+    /**
+     * @param null $query
+     * @param int $limit
+     * @param int $offset
+     * @param array|string|int $responsibleUsersIdOrName
+     * @param \DateTime|null $modifiedSince
+     * @param bool $isRaw
+     * @return Note[]|\stdClass[]
+     * @throws AmoWrapException
+     */
+    public function getNotesTaskList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+                                     \DateTime $modifiedSince = null, $isRaw = false)
+    {
+        return $this->getList('Note-Task', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }
 }
