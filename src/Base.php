@@ -377,9 +377,9 @@ abstract class Base
     {
         $key = array_search($tag, $this->tags);
         if ($key !== false) {
-            unset($this->tags[$key]);
             throw new AmoWrapException('Тэг не найден');
         }
+        unset($this->tags[$key]);
         return $this;
     }
 
