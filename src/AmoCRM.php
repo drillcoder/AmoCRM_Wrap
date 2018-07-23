@@ -465,7 +465,7 @@ class AmoCRM
      * @return Note[]|\stdClass[]
      * @throws AmoWrapException
      */
-    public function notesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
+    public function getNotesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
                                      \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Note-Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
