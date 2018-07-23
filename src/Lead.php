@@ -11,7 +11,7 @@ namespace DrillCoder\AmoCRM_Wrap;
 
 /**
  * Class Lead
- * @package AmoCRM
+ * @package DrillCoder\AmoCRM_Wrap
  */
 class Lead extends Base
 {
@@ -31,18 +31,6 @@ class Lead extends Base
      * @var int
      */
     protected $mainContactId;
-
-    /**
-     * @return array
-     */
-    protected function getExtraRaw()
-    {
-        return array(
-            'pipeline_id' => $this->pipelineId,
-            'sale' => $this->sale,
-            'status_id' => $this->statusId,
-        );
-    }
 
     /**
      * @param \stdClass $stdClass
@@ -160,5 +148,17 @@ class Lead extends Base
         if ($this->statusId == 142 || $this->statusId == 143)
             return true;
         return false;
+    }
+
+    /**
+     * @return array
+     */
+    protected function getExtraRaw()
+    {
+        return array(
+            'pipeline_id' => $this->pipelineId,
+            'sale' => $this->sale,
+            'status_id' => $this->statusId,
+        );
     }
 }

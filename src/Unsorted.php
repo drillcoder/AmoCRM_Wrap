@@ -11,10 +11,34 @@ namespace DrillCoder\AmoCRM_Wrap;
 
 /**
  * Class Unsorted
- * @package AmoCRM
+ * @package DrillCoder\AmoCRM_Wrap
  */
 class Unsorted
 {
+    /**
+     *
+     */
+    const CATEGORIES_SIP = 'sip';
+    /**
+     *
+     */
+    const CATEGORIES_MAIL = 'mail';
+    /**
+     *
+     */
+    const CATEGORIES_FORM = 'forms';
+    /**
+     *
+     */
+    const CATEGORIES_CHAT = 'chat';
+    /**
+     *
+     */
+    const ORDER_BY_ASC = 'asc';
+    /**
+     *
+     */
+    const ORDER_BY_DESC = 'desc';
     /**
      * @var int
      */

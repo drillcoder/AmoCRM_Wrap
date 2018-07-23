@@ -10,7 +10,7 @@ namespace DrillCoder\AmoCRM_Wrap\Helpers;
 
 /**
  * Class Value
- * @package AmoCRM\Helpers
+ * @package DrillCoder\AmoCRM_Wrap\Helpers
  */
 class Value
 {

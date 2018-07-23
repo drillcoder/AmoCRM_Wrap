@@ -11,7 +11,7 @@ namespace DrillCoder\AmoCRM_Wrap;
 
 /**
  * Class Note
- * @package AmoCRM
+ * @package DrillCoder\AmoCRM_Wrap
  */
 class Note extends Base
 {
@@ -32,23 +32,6 @@ class Note extends Base
      * @var string
      */
     protected $service;
-
-    /**
-     * @return array
-     */
-    protected function getExtraRaw()
-    {
-        return array(
-            'element_id' => $this->elementId,
-            'element_type' => $this->elementType,
-            'note_type' => $this->type,
-            'text' => $this->text,
-            'params' => array(
-                'text' => $this->text,
-                'service' => $this->service,
-            ),
-        );
-    }
 
     /**
      * @param \stdClass $stdClass
@@ -101,5 +84,22 @@ class Note extends Base
     {
         $this->service = $service;
         return $this;
+    }
+
+    /**
+     * @return array
+     */
+    protected function getExtraRaw()
+    {
+        return array(
+            'element_id' => $this->elementId,
+            'element_type' => $this->elementType,
+            'note_type' => $this->type,
+            'text' => $this->text,
+            'params' => array(
+                'text' => $this->text,
+                'service' => $this->service,
+            ),
+        );
     }
 }

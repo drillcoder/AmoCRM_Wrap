@@ -11,7 +11,7 @@ namespace DrillCoder\AmoCRM_Wrap;
 
 /**
  * Class AmoWrapException
- * @package AmoCRM
+ * @package DrillCoder\AmoCRM_Wrap
  */
 class AmoWrapException extends \Exception
 {

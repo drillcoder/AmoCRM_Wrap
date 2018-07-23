@@ -11,7 +11,7 @@ namespace DrillCoder\AmoCRM_Wrap;
 
 /**
  * Class Contact
- * @package AmoCRM
+ * @package DrillCoder\AmoCRM_Wrap
  */
 class Contact extends Base
 {

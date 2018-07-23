@@ -11,7 +11,7 @@ namespace DrillCoder\AmoCRM_Wrap;
 
 /**
  * Class Task
- * @package AmoCRM
+ * @package DrillCoder\AmoCRM_Wrap
  */
 class Task extends Base
 {
@@ -33,21 +33,6 @@ class Task extends Base
     {
         parent::__construct($amoId);
         $this->completeTill = new \DateTime();
-    }
-
-    /**
-     * @return array
-     */
-    protected function getExtraRaw()
-    {
-        return array(
-            'complete_till_at' => $this->completeTill->format('U'),
-            'is_completed' => $this->isComplete,
-            'element_id' => $this->elementId,
-            'element_type' => $this->elementType,
-            'task_type' => $this->type,
-            'text' => $this->text,
-        );
     }
 
     /**
@@ -101,5 +86,20 @@ class Task extends Base
     {
         $this->completeTill = $completeTill;
         return $this;
+    }
+
+    /**
+     * @return array
+     */
+    protected function getExtraRaw()
+    {
+        return array(
+            'complete_till_at' => $this->completeTill->format('U'),
+            'is_completed' => $this->isComplete,
+            'element_id' => $this->elementId,
+            'element_type' => $this->elementType,
+            'task_type' => $this->type,
+            'text' => $this->text,
+        );
     }
 }
