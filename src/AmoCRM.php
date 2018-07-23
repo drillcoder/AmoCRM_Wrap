@@ -343,7 +343,7 @@ class AmoCRM
                 break;
         }
         if (isset($className)) {
-            $typeObj = "AmoCRM\\$className";
+            $typeObj = "DrillCoder\\AmoCRM_Wrap\\$className";
             $config = new Config();
             $typeForUrl = $config->{strtolower($className)}['url'];
             $url = "api/v2/$typeForUrl?";
