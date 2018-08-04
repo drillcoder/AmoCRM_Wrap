@@ -427,7 +427,7 @@ abstract class Base
         );
         $res = AmoCRM::cUrl('private/api/v2/json/fields/set', $data);
         if ($res !== null) {
-            return $res->fields->add[0]->id;
+             return $res->response->fields->add[0]->id;
         }
         throw new AmoWrapException('Не удалось добавить пользовательское поле');
     }
