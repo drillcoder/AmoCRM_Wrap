@@ -969,8 +969,7 @@ abstract class Base
         if ($completeTill !== null) {
             $task->setCompleteTill($completeTill);
         }
-        $argsStatus = AmoCRM::getInfo()->get('taskTypes');
-        if (!isset($argsStatus[$typeId])) {
+        if (!in_array($typeId, AmoCRM::getInfo()->get('taskTypes'))) {
             throw new AmoWrapException('Не удалось найти тип задачи');
         }
         $task->setText($text)
