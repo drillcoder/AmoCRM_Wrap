@@ -44,7 +44,7 @@ class Note extends Base
         $this->type = (int)$stdClass->note_type;
         $this->elementId = (int)$stdClass->element_id;
         $this->elementType = (int)$stdClass->element_type;
-        $this->text = $stdClass->text;
+        $this->text = isset($stdClass->text) ? $stdClass->text : null;
         $this->editable = $stdClass->is_editable;
         $this->attachment = $stdClass->attachment;
         return $this;

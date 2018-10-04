@@ -171,18 +171,10 @@ abstract class Base
             $dateUpdate->setTimestamp($stdClass->updated_at);
             $this->dateUpdate = $dateUpdate;
             $this->responsibleUserId = (int)$stdClass->responsible_user_id;
-            if (isset($stdClass->updated_by)) {
-                $this->userIdUpdate = (int)$stdClass->updated_by;
-            }
-            if (isset($stdClass->company->id)) {
-                $this->companyId = (int)$stdClass->company->id;
-            }
-            if (isset($stdClass->leads->id)) {
-                $this->leadsId = $stdClass->leads->id;
-            }
-            if (isset($stdClass->contacts->id)) {
-                $this->contactsId = $stdClass->contacts->id;
-            }
+            $this->userIdUpdate = isset($stdClass->updated_by) ? (int)$stdClass->updated_by : null;
+            $this->companyId = isset($stdClass->company->id) ? (int)$stdClass->company->id : null;
+            $this->leadsId = isset($stdClass->leads->id) ? $stdClass->leads->id : null;
+            $this->contactsId = isset($stdClass->contacts->id) ? $stdClass->contacts->id : null;
             if (isset($stdClass->tags) && is_array($stdClass->tags)) {
                 foreach ($stdClass->tags as $tag) {
                     $this->tags[$tag->id] = $tag->name;
@@ -414,20 +406,21 @@ abstract class Base
      * @return int|false
      * @throws AmoWrapException
      */
-    public function addCustomField($name, $type)
+    public function addCustomField($name, $type = 1)
     {
         $elementType = $this->config['elementType'];
         $data['request']['fields']['add'] = array(
             array(
-                "name" => $name,
-                "type" => $type,
-                "element_type" => $elementType,
-                "origin" => 'AmoCRM Wrap'
+                'name' => $name,
+                'type' => $type,
+                'element_type' => $elementType,
+                'origin' => 'AmoCRM Wrap',
+                'disabled' => false,
             )
         );
         $res = AmoCRM::cUrl('private/api/v2/json/fields/set', $data);
         if ($res !== null) {
-             return $res->response->fields->add[0]->id;
+            return $res->response->fields->add[0]->id;
         }
         throw new AmoWrapException('Не удалось добавить пользовательское поле');
     }
@@ -445,13 +438,13 @@ abstract class Base
         }
         $data['request']['fields']['delete'] = array(
             array(
-                "id" => $id,
-                "origin" => 'AmoCRM Wrap'
+                'id' => $id,
+                'origin' => 'AmoCRM Wrap'
             )
         );
         $res = AmoCRM::cUrl('private/api/v2/json/fields/set', $data);
         if ($res !== null) {
-            if ($res->fields->delete[0]->id == $id) {
+            if ($res->response->fields->delete[0]->id == $id) {
                 return $this;
             }
         }
@@ -969,8 +962,7 @@ abstract class Base
         if ($completeTill !== null) {
             $task->setCompleteTill($completeTill);
         }
-        $argsStatus = AmoCRM::getInfo()->get('taskTypes');
-        if (!isset($argsStatus[$typeId])) {
+        if (!key_exists($typeId, AmoCRM::getInfo()->get('taskTypes'))) {
             throw new AmoWrapException('Не удалось найти тип задачи');
         }
         $task->setText($text)
@@ -1015,24 +1007,24 @@ abstract class Base
                 );
             } else {
                 $post = array(
-                    'UserFile' => "@" . $pathToFile
+                    'UserFile' => '@' . $pathToFile
                 );
             }
-            $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID=" . $this->id . "&ELEMENT_TYPE=" .
-                $elementType . "&file" . "api" . str_replace(".", "", microtime(true));
+            $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID={$this->id}&ELEMENT_TYPE={$elementType}&fileapi" .
+                str_replace('.', '', microtime(true));
             $res = AmoCRM::cUrl($url, $post, null, true);
             if (isset($res->status) && $res->status == 'fail') {
                 throw new AmoWrapException('Не удалось добавить файл');
             }
             $post = array(
-                'ACTION' => "ADD_NOTE",
+                'ACTION' => 'ADD_NOTE',
                 'DATE_CREATE' => time(),
                 'ATTACH' => $res->note->params->link,
                 'BODY' => $res->note->params->text,
                 'ELEMENT_ID' => $this->id,
                 'ELEMENT_TYPE' => $elementType,
             );
-            $res = AmoCRM::cUrl("private/notes/edit2.php", $post, null, true);
+            $res = AmoCRM::cUrl('private/notes/edit2.php', $post, null, true);
             if (isset($res->status) && $res->status == 'ok') {
                 return $this;
             }
