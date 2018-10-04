@@ -15,14 +15,14 @@ use DrillCoder\AmoCRM_Wrap\Helpers\Info;
 /**
  * Class Amo
  * @package DrillCoder\AmoCRM_Wrap
- * @version Version 6.0.8
+ * @version Version 6.0.9
  */
 class AmoCRM
 {
     /**
      * Wrap Version
      */
-    const VERSION = '6.0.8';
+    const VERSION = '6.0.9';
     /**
      * @var string
      */
@@ -122,7 +122,10 @@ class AmoCRM
             $out = curl_exec($curl);
             curl_close($curl);
             $response = json_decode($out);
-            if ($response) {
+            if ($response !== null) {
+                if (isset($response->response->error)) {
+                    throw new AmoWrapException($response->response->error);
+                }
                 return $response;
             }
         } else {
@@ -253,7 +256,7 @@ class AmoCRM
             array(), null, true));
         $this->createBackupFile($directory, 'tasks.backup', $this->getTasksList(null, 0, 0,
             array(), null, true));
-        $this->createBackupFile($directory, 'notes-contacts.backup', $this->notesContactList(null,
+        $this->createBackupFile($directory, 'notes-contacts.backup', $this->getNotesContactList(null,
             0, 0, array(), null, true));
         $this->createBackupFile($directory, 'notes-leads.backup', $this->getNotesLeadList(null, 0,
             0, array(), null, true));
@@ -305,8 +308,7 @@ class AmoCRM
      * @return Company[]|Contact[]|Lead[]|\stdClass[]
      * @throws AmoWrapException
      */
-    private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince = null,
-                             $isRaw)
+    private function getList($type, $query, $limit, $offset, $responsibleUsersIdOrName, \DateTime $modifiedSince, $isRaw)
     {
         $offset = (int)$offset;
         $limit = (int)$limit;
@@ -466,7 +468,7 @@ class AmoCRM
      * @throws AmoWrapException
      */
     public function getNotesContactList($query = null, $limit = 0, $offset = 0, $responsibleUsersIdOrName = array(),
-                                     \DateTime $modifiedSince = null, $isRaw = false)
+                                        \DateTime $modifiedSince = null, $isRaw = false)
     {
         return $this->getList('Note-Contact', $query, $limit, $offset, $responsibleUsersIdOrName, $modifiedSince, $isRaw);
     }

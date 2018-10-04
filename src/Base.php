@@ -402,7 +402,7 @@ abstract class Base
 
     /**
      * @param string $name
-     * @param string $type
+     * @param int $type
      * @return int|false
      * @throws AmoWrapException
      */
