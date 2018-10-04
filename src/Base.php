@@ -427,7 +427,7 @@ abstract class Base
         );
         $res = AmoCRM::cUrl('private/api/v2/json/fields/set', $data);
         if ($res !== null) {
-            return $res->fields->add[0]->id;
+             return $res->response->fields->add[0]->id;
         }
         throw new AmoWrapException('Не удалось добавить пользовательское поле');
     }
@@ -969,7 +969,8 @@ abstract class Base
         if ($completeTill !== null) {
             $task->setCompleteTill($completeTill);
         }
-        if (!in_array($typeId, AmoCRM::getInfo()->get('taskTypes'))) {
+        $argsStatus = AmoCRM::getInfo()->get('taskTypes');
+        if (!isset($argsStatus[$typeId])) {
             throw new AmoWrapException('Не удалось найти тип задачи');
         }
         $task->setText($text)
