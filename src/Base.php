@@ -393,7 +393,7 @@ abstract class Base
     public function delTag($tag)
     {
         $key = array_search($tag, $this->tags);
-        if ($key !== false) {
+        if ($key === false) {
             throw new AmoWrapException('Тэг не найден');
         }
         unset($this->tags[$key]);
