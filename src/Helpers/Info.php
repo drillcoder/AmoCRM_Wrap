@@ -190,4 +190,12 @@ class Info
         }
         throw new AmoWrapException('Пользователь не найден');
     }
+
+    /**
+     * @return array
+     */
+    public function getPipelines()
+    {
+        return $this->pipelines;
+    }
 }
