@@ -8,44 +8,51 @@
 
 namespace DrillCoder\AmoCRM_Wrap;
 
+use stdClass;
 
 /**
  * Class Lead
  * @package DrillCoder\AmoCRM_Wrap
  */
-class Lead extends Base
+class Lead extends BaseEntity
 {
     /**
      * @var int
      */
-    protected $statusId;
-    /**
-     * @var int
-     */
-    protected $sale;
-    /**
-     * @var int
-     */
-    protected $pipelineId;
-    /**
-     * @var int
-     */
-    protected $mainContactId;
+    private $statusId;
 
     /**
-     * @param \stdClass $stdClass
+     * @var int
+     */
+    private $sale;
+
+    /**
+     * @var int
+     */
+    private $pipelineId;
+
+    /**
+     * @var int
+     */
+    private $mainContactId;
+
+    /**
+     * @param stdClass $data
+     *
      * @return Lead
+     *
      * @throws AmoWrapException
      */
-    public function loadInRaw($stdClass)
+    public function loadInRaw($data)
     {
-        Base::loadInRaw($stdClass);
-        $this->sale = (int)$stdClass->sale;
-        $this->pipelineId = (int)$stdClass->pipeline->id;
-        $this->statusId = (int)$stdClass->status_id;
-        if (isset($stdClass->main_contact->id)) {
-            $this->mainContactId = (int)$stdClass->main_contact->id;
+        BaseEntity::loadInRaw($data);
+        $this->sale = (int)$data->sale;
+        $this->pipelineId = (int)$data->pipeline->id;
+        $this->statusId = (int)$data->status_id;
+        if (isset($data->main_contact->id)) {
+            $this->mainContactId = (int)$data->main_contact->id;
         }
+
         return $this;
     }
 
@@ -59,11 +66,13 @@ class Lead extends Base
 
     /**
      * @param int $sale
+     *
      * @return Lead
      */
     public function setSale($sale)
     {
         $this->sale = $sale;
+
         return $this;
     }
 
@@ -77,30 +86,41 @@ class Lead extends Base
 
     /**
      * @return string
-     * @throws AmoWrapException
      */
     public function getStatusName()
     {
-        $pipelines = AmoCRM::getInfo()->get('pipelines');
-        return $pipelines[$this->pipelineId]['statuses'][$this->statusId]['name'];
+        $statuses = AmoCRM::getStatusesName($this->pipelineId);
+
+        return $statuses[$this->statusId];
     }
 
     /**
-     * @param int|string $idOrNamePipeline
-     * @param int|string $idOrNameStatus
+     * @param int|string $pipelineIdOrName
+     *
      * @return Lead
+     *
      * @throws AmoWrapException
      */
-    public function setPipelineAndStatus($idOrNamePipeline, $idOrNameStatus)
+    public function setPipeline($pipelineIdOrName)
     {
-        $this->pipelineId = AmoCRM::getInfo()->getPipelineIdFromIdOrName($idOrNamePipeline);
-        if (empty($this->pipelineId)) {
-            throw new AmoWrapException('Не удалось задать воронку');
-        }
-        $this->statusId = AmoCRM::getInfo()->getStatusIdFromStatusIdOrNameAndPipelineIdOrName($this->pipelineId, $idOrNameStatus);
-        if (empty($this->statusId)) {
-            throw new AmoWrapException('Не удалось задать статус');
-        }
+        $this->pipelineId = AmoCRM::searchPipelineId($pipelineIdOrName);
+
+        return $this;
+    }
+
+    /**
+     * @param int|string $statusIdOrName
+     * @param int|string $pipelineIdOrName
+     *
+     * @return Lead
+     *
+     * @throws AmoWrapException
+     */
+    public function setStatus($statusIdOrName, $pipelineIdOrName = null)
+    {
+        $pipelineId = $pipelineIdOrName !== null ? AmoCRM::searchPipelineId($pipelineIdOrName) : $this->pipelineId;
+        $this->statusId = AmoCRM::searchStatusId($pipelineId, $statusIdOrName);
+
         return $this;
     }
 
@@ -114,12 +134,12 @@ class Lead extends Base
 
     /**
      * @return string
-     * @throws AmoWrapException
      */
     public function getPipelineName()
     {
-        $pipelines = AmoCRM::getInfo()->get('pipelines');
-        return $pipelines[$this->pipelineId]['name'];
+        $pipelines = AmoCRM::getPipelinesName();
+
+        return $pipelines[$this->pipelineId];
     }
 
     /**
@@ -131,12 +151,25 @@ class Lead extends Base
     }
 
     /**
-     * @param Contact $contact
+     * @return Contact
+     *
+     * @throws AmoWrapException
+     */
+    public function getMainContact()
+    {
+        return new Contact($this->mainContactId);
+    }
+
+    /**
+     * @param Contact|string|int $contact
+     *
      * @return Lead
      */
     public function setMainContact($contact)
     {
-        $this->mainContactId = $contact->getId();
+        $id = $contact instanceof Contact ? $contact->getId() : Base::onlyNumbers($contact);
+        $this->mainContactId = $id;
+
         return $this;
     }
 
@@ -145,9 +178,7 @@ class Lead extends Base
      */
     public function isClosed()
     {
-        if ($this->statusId == 142 || $this->statusId == 143)
-            return true;
-        return false;
+        return $this->statusId === 142 || $this->statusId === 143;
     }
 
     /**

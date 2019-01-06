@@ -1,7 +1,7 @@
 {
   "name": "drillcoder/amocrm_wrap",
   "description": "Обёртка для простого взаимодействия с Api AmoCRM",
-  "version": "6.0.9.3",
+  "version": "7.0",
   "keywords": [
     "drillcoder",
     "amo",
@@ -18,8 +18,8 @@
   ],
   "license": "MIT",
   "require": {
-    "php": ">=5.3.0",
-    "ext-curl": "*",
+    "php": ">=5.3",
+    "ext-curl": ">=7.34",
     "ext-json": "*",
     "ext-mbstring": "*"
   },

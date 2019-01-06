@@ -13,83 +13,70 @@ namespace DrillCoder\AmoCRM_Wrap;
  * Class Unsorted
  * @package DrillCoder\AmoCRM_Wrap
  */
-class Unsorted
+class Unsorted extends Base
 {
-    /**
-     *
-     */
-    const CATEGORIES_SIP = 'sip';
-    /**
-     *
-     */
-    const CATEGORIES_MAIL = 'mail';
-    /**
-     *
-     */
-    const CATEGORIES_FORM = 'forms';
-    /**
-     *
-     */
-    const CATEGORIES_CHAT = 'chat';
-    /**
-     *
-     */
-    const ORDER_BY_ASC = 'asc';
-    /**
-     *
-     */
-    const ORDER_BY_DESC = 'desc';
     /**
      * @var int
      */
-    protected $id;
+    private $id;
+
     /**
      * @var string
      */
-    protected $formName;
+    private $formName;
+
     /**
      * @var int
      */
-    protected $pipelineId;
+    private $pipelineId;
+
     /**
      * @var Contact[]|array
      */
-    protected $contacts = array();
+    private $contacts = array();
+
     /**
      * @var Lead|array
      */
-    protected $lead = array();
+    private $lead = array();
+
     /**
      * @var Company[]|array
      */
-    protected $companies = array();
+    private $companies = array();
+
     /**
      * @var Note[]
      */
-    protected $notes;
+    private $notes;
 
     /**
-     * Unsorted constructor.
-     * @param string $formName
-     * @param Contact[] $contacts
-     * @param Lead $lead
-     * @param int|string $pipelineIdOrName
-     * @param Company[] $companies
+     * @param string          $formName
+     * @param Contact[]       $contacts
+     * @param Lead            $lead
+     * @param int|string|null $pipeline
+     * @param Company[]       $companies
+     *
      * @throws AmoWrapException
      */
-    public function __construct($formName, $lead, $contacts = array(), $pipelineIdOrName = null, $companies = array())
+    public function __construct($formName, $lead, $contacts = array(), $pipeline = null, $companies = array())
     {
+        if (!AmoCRM::isAuthorization()) {
+            throw new AmoWrapException('Требуется авторизация');
+        }
+
         $this->contacts = $contacts;
         $this->lead = $lead;
         $this->companies = $companies;
         $this->formName = $formName;
-        if (!empty($pipelineIdOrName)) {
-            $this->pipelineId = AmoCRM::getInfo()->getPipelineIdFromIdOrName($pipelineIdOrName);
+        if ($pipeline !== null) {
+            $this->pipelineId = AmoCRM::searchPipelineId($pipeline);
         }
     }
 
     /**
      * @return Unsorted
+     *
      * @throws AmoWrapException
      */
     public function save()
@@ -114,7 +101,7 @@ class Unsorted
             }
             $request['add'] = array(
                 array(
-                    'source_name' => 'AmoCRM Wrap by Drill',
+                    'source_name' => 'DrillCoder AmoCRM Wrap',
                     'created_at' => date('U'),
                     'pipeline_id' => $this->pipelineId,
                     'incoming_entities' => array(
@@ -129,7 +116,7 @@ class Unsorted
                 ),
             );
             $response = AmoCRM::cUrl('api/v2/incoming_leads/form', $request);
-            if ($response->status == 'success') {
+            if ($response !== null && $response->status === 'success') {
                 $this->id = $response->data[0];
                 return $this;
             }
@@ -139,8 +126,10 @@ class Unsorted
 
     /**
      * @param string $text
-     * @param int $type
+     * @param int    $type
+     *
      * @return Unsorted
+     *
      * @throws AmoWrapException
      */
     public function addNote($text, $type = 4)

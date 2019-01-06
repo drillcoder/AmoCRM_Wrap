@@ -13,7 +13,7 @@ namespace DrillCoder\AmoCRM_Wrap;
  * Class Company
  * @package DrillCoder\AmoCRM_Wrap
  */
-class Company extends Base
+class Company extends BaseEntity
 {
     /**
      * @return array

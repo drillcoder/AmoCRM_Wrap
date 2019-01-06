@@ -8,45 +8,47 @@
 
 namespace DrillCoder\AmoCRM_Wrap;
 
+use stdClass;
 
 /**
  * Class Note
  * @package DrillCoder\AmoCRM_Wrap
  */
-class Note extends Base
+class Note extends BaseEntity
 {
     /**
      * @var bool
      */
-    protected $editable;
-    /**
-     * @var string
-     */
-    protected $attachment;
-    /**
-     * @var string
-     */
-    protected $params;
+    private $editable;
 
     /**
      * @var string
      */
-    protected $service;
+    private $attachment;
 
     /**
-     * @param \stdClass $stdClass
+     * @var string
+     */
+    private $service;
+
+    /**
+     * @var string
+     */
+    private $phone;
+
+    /**
+     * @param stdClass $data
+     *
      * @return Note
+     *
      * @throws AmoWrapException
      */
-    public function loadInRaw($stdClass)
+    public function loadInRaw($data)
     {
-        Base::loadInRaw($stdClass);
-        $this->type = (int)$stdClass->note_type;
-        $this->elementId = (int)$stdClass->element_id;
-        $this->elementType = (int)$stdClass->element_type;
-        $this->text = isset($stdClass->text) ? $stdClass->text : null;
-        $this->editable = $stdClass->is_editable;
-        $this->attachment = $stdClass->attachment;
+        BaseEntity::loadInRaw($data);
+        $this->editable = $data->is_editable;
+        $this->attachment = $data->attachment;
+
         return $this;
     }
 
@@ -68,21 +70,49 @@ class Note extends Base
 
     /**
      * @param string $attachment
+     *
      * @return Note
      */
     public function setAttachment($attachment)
     {
         $this->attachment = $attachment;
+
         return $this;
     }
 
     /**
      * @param string $service
+     *
      * @return Note
      */
     public function setService($service)
     {
         $this->service = $service;
+
+        return $this;
+    }
+
+    /**
+     * @param $phone
+     *
+     * @return $this
+     */
+    public function setPhone($phone)
+    {
+        $this->phone = $phone;
+
+        return $this;
+    }
+
+    /**
+     * @param string $userId
+     *
+     * @return $this
+     */
+    public function setCreatedUser($userId)
+    {
+        $this->createdUserId = $userId;
+
         return $this;
     }
 
@@ -96,9 +126,11 @@ class Note extends Base
             'element_type' => $this->elementType,
             'note_type' => $this->type,
             'text' => $this->text,
+            'created_by' => $this->createdUserId,
             'params' => array(
                 'text' => $this->text,
                 'service' => $this->service,
+                'phone' => $this->phone,
             ),
         );
     }

@@ -15,11 +15,4 @@ namespace DrillCoder\AmoCRM_Wrap;
  */
 class AmoWrapException extends \Exception
 {
-    /**
-     * @param string $message
-     */
-    public function __construct($message)
-    {
-        $this->message = $message;
-    }
 }

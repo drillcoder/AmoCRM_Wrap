@@ -8,47 +8,55 @@
 
 namespace DrillCoder\AmoCRM_Wrap;
 
+use DateTime;
+use Exception;
+use stdClass;
 
 /**
  * Class Task
  * @package DrillCoder\AmoCRM_Wrap
  */
-class Task extends Base
+class Task extends BaseEntity
 {
     /**
      * @var bool
      */
-    protected $isComplete;
+    private $isComplete;
+
     /**
-     * @var \DateTime
+     * @var DateTime
      */
-    protected $completeTill;
+    private $completeTill;
 
     /**
      * Task constructor.
-     * @param null $amoId
+     *
+     * @param null $id
+     *
      * @throws AmoWrapException
      */
-    public function __construct($amoId = null)
+    public function __construct($id = null)
     {
-        parent::__construct($amoId);
-        $this->completeTill = new \DateTime();
+        parent::__construct($id);
+
+        try {
+            $this->completeTill = new DateTime();
+        } catch (Exception $e) {
+            throw new AmoWrapException("Ошибка в обёртке: {$e->getMessage()}", $e->getCode(), $e);
+        }
     }
 
     /**
-     * @param \stdClass $stdClass
+     * @param stdClass $data
+     *
      * @return Task
      * @throws AmoWrapException
      */
-    public function loadInRaw($stdClass)
+    public function loadInRaw($data)
     {
-        Base::loadInRaw($stdClass);
-        $this->type = $stdClass->task_type;
-        $this->elementId = (int)$stdClass->element_id;
-        $this->elementType = (int)$stdClass->element_type;
-        $this->text = $stdClass->text;
-        $this->isComplete = $stdClass->is_completed;
-        $this->completeTill->setTimestamp($stdClass->complete_till_at);
+        BaseEntity::loadInRaw($data);
+        $this->isComplete = $data->is_completed;
+        $this->completeTill->setTimestamp($data->complete_till_at);
         return $this;
     }
 
@@ -62,6 +70,7 @@ class Task extends Base
 
     /**
      * @param bool $isComplete
+     *
      * @return Task
      */
     public function setIsComplete($isComplete)
@@ -71,7 +80,7 @@ class Task extends Base
     }
 
     /**
-     * @return \DateTime
+     * @return DateTime
      */
     public function getCompleteTill()
     {
@@ -79,12 +88,14 @@ class Task extends Base
     }
 
     /**
-     * @param \DateTime $completeTill
+     * @param DateTime $completeTill
+     *
      * @return Task
      */
-    public function setCompleteTill($completeTill)
+    public function setCompleteTill(DateTime $completeTill)
     {
         $this->completeTill = $completeTill;
+
         return $this;
     }
 

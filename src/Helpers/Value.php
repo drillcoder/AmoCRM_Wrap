@@ -15,13 +15,45 @@ namespace DrillCoder\AmoCRM_Wrap\Helpers;
 class Value
 {
     /**
+     * Адрес. Первая строка
+     */
+    const SUBTYPE_ADDRESS_LINE_1 = 1;
+
+    /**
+     * Адрес. Вторая строка
+     */
+    const SUBTYPE_ADDRESS_LINE_2 = 2;
+
+    /**
+     * Город
+     */
+    const SUBTYPE_CITY = 3;
+
+    /**
+     * Регион
+     */
+    const SUBTYPE_STATE = 4;
+
+    /**
+     * Индекс
+     */
+    const SUBTYPE_ZIP = 5;
+
+    /**
+     * Страна. Задается кодом (Например: RU, UA, KZ, и т.д.)
+     */
+    const SUBTYPE_COUNTRY = 6;
+
+    /**
      * @var string
      */
     private $value;
+
     /**
      * @var string|null
      */
     private $enum;
+
     /**
      * @var int|null
      */
@@ -29,48 +61,43 @@ class Value
 
     /**
      * Value constructor.
-     * @param string $value
+     *
+     * @param string      $value
      * @param string|null $enum
-     * @param int|null $subtype
+     * @param int|null    $subtype
      */
     public function __construct($value, $enum = null, $subtype = null)
     {
-        $this->enum = (int)$enum;
         $this->value = $value;
-        switch ($subtype) {
-            case 1:
-                $subtype = 'address_line_1';
-                break;
-            case 2:
-                $subtype = 'address_line_2';
-                break;
-            case 3:
-                $subtype = 'city';
-                break;
-            case 4:
-                $subtype = 'state';
-                break;
-            case 5:
-                $subtype = 'zip';
-                break;
-            case 6:
-                $subtype = 'country';
-                break;
-        }
+        $this->enum = (int)$enum;
         $this->subtype = $subtype;
     }
 
     /**
-     * @param $stdClass
+     * @param $data
+     *
      * @return Value
      */
-    public static function loadInStdClass($stdClass)
+    public static function loadInRaw($data)
     {
-        if (!isset($stdClass->enum))
-            $stdClass->enum = null;
-        if (!isset($stdClass->subtype))
-            $stdClass->subtype = null;
-        return new Value($stdClass->value, $stdClass->enum, $stdClass->subtype);
+        if (!isset($data->enum)) {
+            $data->enum = null;
+        }
+        if (!isset($data->subtype)) {
+            $data->subtype = null;
+        }
+        return new Value($data->value, $data->enum, $data->subtype);
+    }
+
+    /**
+     * @param string $value
+     *
+     * @return Value
+     */
+    public function setValue($value)
+    {
+        $this->value = $value;
+        return $this;
     }
 
     /**
@@ -79,6 +106,18 @@ class Value
     public function getValue()
     {
         return $this->value;
+    }
+
+    /**
+     * @param string $enum
+     *
+     * @return Value
+     */
+    public function setEnum($enum)
+    {
+        $this->enum = $enum;
+
+        return $this;
     }
 
     /**
@@ -95,25 +134,5 @@ class Value
     public function getSubtype()
     {
         return $this->subtype;
-    }
-
-    /**
-     * @param string $enum
-     * @return Value
-     */
-    public function setEnum($enum)
-    {
-        $this->enum = $enum;
-        return $this;
-    }
-
-    /**
-     * @param string $value
-     * @return Value
-     */
-    public function setValue($value)
-    {
-        $this->value = $value;
-        return $this;
     }
 }
