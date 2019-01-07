@@ -1,6 +1,7 @@
 # Обёртка для простого взаимодействия с Api AmoCRM
 
-Текущая версия: 7.0
+[![Latest Stable Version](https://poser.pugx.org/drillcoder/amocrm_wrap/v/stable)](https://packagist.org/packages/drillcoder/amocrm_wrap)
+[![License](https://poser.pugx.org/drillcoder/amocrm_wrap/license)](https://packagist.org/packages/drillcoder/amocrm_wrap)
 
 ## Подключение
 
