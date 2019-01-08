@@ -1,6 +1,8 @@
 # Обёртка для простого взаимодействия с Api AmoCRM
 
+[![Build Status](https://travis-ci.org/drillcoder/AmoCRM_Wrap.svg?branch=master)](https://travis-ci.org/drillcoder/AmoCRM_Wrap)
 [![Latest Stable Version](https://poser.pugx.org/drillcoder/amocrm_wrap/v/stable)](https://packagist.org/packages/drillcoder/amocrm_wrap)
+[![Total Downloads](https://poser.pugx.org/drillcoder/amocrm_wrap/downloads)](https://packagist.org/packages/drillcoder/amocrm_wrap)
 [![License](https://poser.pugx.org/drillcoder/amocrm_wrap/license)](https://packagist.org/packages/drillcoder/amocrm_wrap)
 
 ## Подключение
