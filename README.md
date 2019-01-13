@@ -1,6 +1,6 @@
 # Обёртка для простого взаимодействия с Api AmoCRM
 
-[![Build Status](https://travis-ci.org/drillcoder/AmoCRM_Wrap.svg?branch=master)](https://travis-ci.org/drillcoder/AmoCRM_Wrap)
+[![Build Status](https://scrutinizer-ci.com/g/drillcoder/AmoCRM_Wrap/badges/build.png?b=master)](https://scrutinizer-ci.com/g/drillcoder/AmoCRM_Wrap/build-status/master)
 [![Latest Stable Version](https://poser.pugx.org/drillcoder/amocrm_wrap/v/stable)](https://packagist.org/packages/drillcoder/amocrm_wrap)
 [![Total Downloads](https://poser.pugx.org/drillcoder/amocrm_wrap/downloads)](https://packagist.org/packages/drillcoder/amocrm_wrap)
 [![License](https://poser.pugx.org/drillcoder/amocrm_wrap/license)](https://packagist.org/packages/drillcoder/amocrm_wrap)
@@ -62,6 +62,15 @@ try {
 
 ## Класс AmoCRM
 * **AmoCRM::VERSION** — Текущая версия обёртки
+* **AmoCRM::getPhoneFieldId()** — Возвращает id поля телефона у сущности Контакт
+* **AmoCRM::getEmailFieldId()** — Возвращает id поля почты у сущности Контакт
+* **AmoCRM::getUsers()** — Возвращает массив пользователей в црм
+* **AmoCRM::getTaskTypes()** — Возвращает массив типов задач
+* **AmoCRM::getPipelinesName()** — Возвращает массив воронок в црм
+* **AmoCRM::getStatusesName($pipelineId)** — Возвращает массив статусов в указанной воронке (нужен id воронки)
+* **AmoCRM::getCustomFields($type)** — Возвращает массив пользовательских полей у заданного типа сущности.
+Возможные типы: contact, lead, company
+* **AmoCRM::getCustomFieldsEnums($type)** — Возвращает массив enums пользовательских полей у заданного типа сущности
 * **searchContactsByPhoneAndEmail($phone, $email)** — Поиск по контактам без учета формата телефона.
 Телефоны начинающиеся с 7 или 8 считает разными. Возвращяет массив из объектов Contact, где ключи id контактов
 

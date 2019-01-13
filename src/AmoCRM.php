@@ -17,14 +17,14 @@ use stdClass;
  * Class Amo
  * @package DrillCoder\AmoCRM_Wrap
  *
- * @version Version 7.0.2
+ * @version Version 7.0.3
  */
 class AmoCRM extends Base
 {
     /**
      * Wrap Version
      */
-    const VERSION = '7.0.2';
+    const VERSION = '7.0.3';
 
     /**
      * @var int
@@ -222,6 +222,14 @@ class AmoCRM extends Base
         $attribute = "{$type}CustomFieldsEnums";
 
         return self::$$attribute;
+    }
+
+    /**
+     * @return array
+     */
+    public static function getTaskTypes()
+    {
+        return self::$taskTypes;
     }
 
     /**
