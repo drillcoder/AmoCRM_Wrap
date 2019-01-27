@@ -111,6 +111,10 @@ class AmoCRM extends Base
      */
     public function __construct($domain, $userLogin, $userAPIKey)
     {
+        if (!defined('CURL_SSLVERSION_TLSv1_2')) {
+            define('CURL_SSLVERSION_TLSv1_2', 6);
+        }
+
         Base::$domain = $domain;
         Base::$userLogin = $userLogin;
         Base::$userAPIKey = $userAPIKey;
