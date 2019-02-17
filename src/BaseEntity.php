@@ -1022,8 +1022,8 @@ abstract class BaseEntity extends Base
                     'UserFile' => '@' . $pathToFile
                 );
             }
-            $url = "/private/notes/edit2.php?ACTION=ADD_NOTE&ELEMENT_ID={$this->id}&ELEMENT_TYPE={$elementType}&fileapi" .
-                str_replace('.', '', microtime(true));
+            $url = "/private/notes/upload.php?ACTION=ADD_NOTE&ELEMENT_ID={$this->id}&ELEMENT_TYPE={$elementType}&fileapi" .
+	               str_replace('.', '', microtime(true));
             $res = AmoCRM::cUrl($url, $post, null, true);
             if ($res !== null && isset($res->status) && $res->status === 'fail') {
                 throw new AmoWrapException('Не удалось добавить файл');
