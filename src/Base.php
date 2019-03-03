@@ -70,7 +70,6 @@ abstract class Base
         $headers = array();
         if (count($data) > 0) {
             curl_setopt($curl, CURLOPT_POST, true);
-            $dataStr = '';
             if ($ajax) {
                 $headers[] = 'X-Requested-With: XMLHttpRequest';
                 $dataStr = $data;
