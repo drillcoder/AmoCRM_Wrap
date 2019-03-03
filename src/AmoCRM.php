@@ -17,14 +17,14 @@ use stdClass;
  * Class Amo
  * @package DrillCoder\AmoCRM_Wrap
  *
- * @version Version 7.0.3
+ * @version Version 7.0.3.2
  */
 class AmoCRM extends Base
 {
     /**
      * Wrap Version
      */
-    const VERSION = '7.0.3';
+    const VERSION = '7.0.3.2';
 
     /**
      * @var int
@@ -715,7 +715,7 @@ class AmoCRM extends Base
      *
      * @throws AmoWrapException
      */
-    public function search(
+    private function search(
         $entityName,
         $query = null,
         $limit = 0,
@@ -747,9 +747,9 @@ class AmoCRM extends Base
         $type = isset($options[1]) ? mb_strtolower($options[1]) : null;
 
         $entityFulName = __NAMESPACE__ . "\\$className";
-        $attribute = mb_strtolower($className);
-
-        $url = 'api/v2/' . (Config::$$attribute)['url'] . '?';
+        $attribute     = mb_strtolower($className);
+        $config        = Config::$$attribute;
+        $url           = 'api/v2/' . $config['url'] . '?';
         if ($query !== null) {
             $url .= "&query=$query";
         }
