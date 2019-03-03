@@ -73,6 +73,7 @@ abstract class Base
             $dataStr = '';
             if ($ajax) {
                 $headers[] = 'X-Requested-With: XMLHttpRequest';
+                $dataStr = $data;
             } elseif ($isUnsorted) {
                 $dataStr = http_build_query($data);
             } else {
