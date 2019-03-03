@@ -17,14 +17,14 @@ use stdClass;
  * Class Amo
  * @package DrillCoder\AmoCRM_Wrap
  *
- * @version Version 7.0.3.2
+ * @version Version 7.0.4
  */
 class AmoCRM extends Base
 {
     /**
      * Wrap Version
      */
-    const VERSION = '7.0.3.2';
+    const VERSION = '7.0.4';
 
     /**
      * @var int
