@@ -147,4 +147,35 @@ abstract class Config
         'url' => 'notes',
         'delete' => 'notes',
     );
+
+    /**
+     * @var string
+     */
+    private static $pathToPemFile = '';
+
+    /**
+     * @see https://curl.haxx.se/libcurl/c/CURLOPT_CAINFO.html
+     * @see \DrillCoder\AmoCRM_Wrap\Base::cUrl()
+     *
+     * @return string
+     */
+    public static function getPathToPeerVerificationCert()
+    {
+        return self::$pathToPemFile;
+    }
+
+    /**
+     * @see https://curl.haxx.se/libcurl/c/CURLOPT_CAINFO.html
+     * @see \DrillCoder\AmoCRM_Wrap\Base::cUrl()
+     *
+     * @param string $pathToPemFile
+     *
+     * @return void
+     */
+    public static function setPathToPeerVerificationCert($pathToPemFile)
+    {
+        if (file_exists($pathToPemFile)) {
+            self::$pathToPemFile = $pathToPemFile;
+        }
+    }
 }

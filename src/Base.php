@@ -39,10 +39,10 @@ abstract class Base
     protected static $authorization = false;
 
     /**
-     * @param string        $url
-     * @param array         $data
+     * @param string $url
+     * @param array $data
      * @param DateTime|null $modifiedSince
-     * @param bool          $ajax
+     * @param bool $ajax
      *
      * @return stdClass|null
      *
@@ -85,6 +85,13 @@ abstract class Base
             $headers[] = 'IF-MODIFIED-SINCE: ' . $modifiedSince->format(DateTime::RFC1123);
         }
         curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+
+        $pathToCert = Config::getPathToPeerVerificationCert();
+
+        if(!empty($pathToCert)) {
+            curl_setopt($curl, CURLOPT_CAINFO, $pathToCert);
+        }
+
         $json = curl_exec($curl);
         curl_close($curl);
 
