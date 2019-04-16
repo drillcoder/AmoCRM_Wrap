@@ -39,10 +39,10 @@ abstract class Base
     protected static $authorization = false;
 
     /**
-     * @param string $url
-     * @param array $data
+     * @param string        $url
+     * @param array         $data
      * @param DateTime|null $modifiedSince
-     * @param bool $ajax
+     * @param bool          $ajax
      *
      * @return stdClass|null
      *
